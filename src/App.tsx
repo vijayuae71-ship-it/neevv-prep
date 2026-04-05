@@ -16,8 +16,10 @@ import { TechSetup } from './components/TechSetup';
 import { TechChatInterface } from './components/TechChatInterface';
 import { TechQuestionBank } from './components/TechQuestionBank';
 import { TechScorecard } from './components/TechScorecard';
+import { ProgressDashboard } from './components/ProgressDashboard';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
 import { sendMessage } from './utils/difyApi';
+import { getJSON, setJSON } from './utils/localStorage';
 import { analyzeSpeech, computeSummary } from './utils/speechAnalytics';
 import { validateMath, isGuesstimateLikelyAnswer } from './utils/mathValidator';
 
@@ -167,6 +169,29 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // ═══════ SAVE SESSION TO PROGRESS ═══════
+
+  const saveSessionToProgress = useCallback((
+    type: 'mba' | 'tech',
+    scores: ScoreEntry[],
+    overallScore: number,
+    targetSchool?: string,
+    targetCompany?: string,
+  ) => {
+    const record = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: new Date().toISOString().slice(0, 10),
+      type,
+      overallScore,
+      categories: scores.map(s => ({ category: s.category, score: s.score })),
+      targetSchool,
+      targetCompany,
+    };
+    const existing = getJSON<any[]>('neevv_progress', []);
+    existing.push(record);
+    setJSON('neevv_progress', existing);
+  }, []);
+
   // ═══════ TECH INTERVIEW HANDLERS ═══════
 
   function detectTechScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
@@ -266,6 +291,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       const scoreResult = detectTechScorecard(coachText);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
         setTechScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        saveSessionToProgress('tech', scoreResult.scores, scoreResult.overallScore, undefined, techProfile?.company);
         setTimeout(() => setTechPhase('scorecard'), 2000);
       }
     } catch (err) {
@@ -274,7 +300,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     } finally {
       setIsTechCoachTyping(false);
     }
-  }, [isTechCoachTyping]);
+  }, [isTechCoachTyping, techProfile, saveSessionToProgress]);
 
   const handleTechHint = useCallback(async () => {
     if (isTechCoachTyping || isTechHintLoading) return;
@@ -314,6 +340,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       const scoreResult = detectTechScorecard(response.answer);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
         setTechScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        saveSessionToProgress('tech', scoreResult.scores, scoreResult.overallScore, undefined, techProfile?.company);
         setTimeout(() => setTechPhase('scorecard'), 2000);
       }
     } catch (err) {
@@ -322,7 +349,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     } finally {
       setIsTechCoachTyping(false);
     }
-  }, [isTechCoachTyping]);
+  }, [isTechCoachTyping, techProfile, saveSessionToProgress]);
 
   const handleTechRestart = useCallback(() => {
     setTechPhase('setup');
@@ -478,6 +505,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       const scoreResult = detectScorecard(coachText);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
         setScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        saveSessionToProgress('mba', scoreResult.scores, scoreResult.overallScore, profile?.targetSchool, undefined);
         setTimeout(() => setPhase('scorecard'), 2000);
       }
     } catch (err) {
@@ -486,7 +514,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     } finally {
       setIsCoachTyping(false);
     }
-  }, [isCoachTyping, updateGuesstimatMode]);
+  }, [isCoachTyping, updateGuesstimatMode, profile, saveSessionToProgress]);
 
   const handleHint = useCallback(async () => {
     if (isCoachTyping || isHintLoading) return;
@@ -593,6 +621,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       const scoreResult = detectScorecard(response.answer);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
         setScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        saveSessionToProgress('mba', scoreResult.scores, scoreResult.overallScore, profile?.targetSchool, undefined);
         setTimeout(() => setPhase('scorecard'), 2000);
       }
     } catch (err) {
@@ -601,7 +630,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     } finally {
       setIsCoachTyping(false);
     }
-  }, [isCoachTyping]);
+  }, [isCoachTyping, profile, saveSessionToProgress]);
 
   const handleEmailScorecard = useCallback(async (): Promise<boolean> => {
     if (!profile?.email || !scorecardData) return false;
@@ -631,6 +660,15 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onGoToTools={() => handleNavigate('tools')}
           onStartTechInterview={() => handleNavigate('techinterview')}
         />
+      </>
+    );
+  }
+
+  if (page === 'progress') {
+    return (
+      <>
+        <Navbar currentPage="progress" onNavigate={handleNavigate} />
+        <ProgressDashboard />
       </>
     );
   }

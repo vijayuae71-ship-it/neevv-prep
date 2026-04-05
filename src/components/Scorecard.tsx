@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen } from 'lucide-react';
+import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen, FileDown } from 'lucide-react';
 import { ScoreEntry, SpeechAnalyticsSummary } from '../types';
+import { exportMBAScorecardPDF } from '../utils/pdfExport';
 
 interface ScorecardProps {
   studentName: string;
@@ -198,9 +199,22 @@ export const Scorecard: React.FC<ScorecardProps> = ({
         )}
 
         {/* Actions */}
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-3 flex-wrap">
           <button className="btn btn-primary" onClick={onRestart}>
             <RotateCcw size={16} /> New Interview
+          </button>
+          <button
+            className="btn btn-outline btn-accent"
+            onClick={() => exportMBAScorecardPDF({
+              studentName,
+              targetSchool,
+              scores,
+              overallScore,
+              coachNote,
+              speechSummary,
+            })}
+          >
+            <FileDown size={16} /> Download PDF
           </button>
           {studentEmail && emailStatus !== 'sent' && (
             <button

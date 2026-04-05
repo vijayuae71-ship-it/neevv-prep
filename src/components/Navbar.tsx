@@ -3,10 +3,10 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut, Code2, Terminal
+  HelpCircle, LogOut, Code2, Terminal, BarChart3
 } from 'lucide-react';
 
-export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank';
+export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress';
 
 interface NavbarProps {
   currentPage: Page;
@@ -24,6 +24,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const sidebarItems: SidebarItem[] = [
+    { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' },
     { icon: <LayoutDashboard size={20} />, label: 'Interview Hub', page: 'interview' },
     { icon: <Target size={20} />, label: 'Question Bank', page: 'questionbank' },
     { icon: <CalendarCheck size={20} />, label: 'Daily Practice', page: 'dailypractice' },
@@ -46,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
 
   const desktopLinks: { label: string; page: Page }[] = [
     { label: 'Home', page: 'landing' },
+    { label: 'Progress', page: 'progress' },
     { label: 'Free Tools', page: 'tools' },
   ];
 

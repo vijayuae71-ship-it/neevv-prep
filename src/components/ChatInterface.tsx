@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, ClipboardList, AlertCircle, Mic, MicOff, Volume2, VolumeX, Lightbulb, ChevronDown, ChevronUp, BarChart3, Sparkles, Video, VideoOff, UserCheck, Calculator } from 'lucide-react';
+import { Send, ClipboardList, AlertCircle, Mic, MicOff, Volume2, VolumeX, Lightbulb, ChevronDown, ChevronUp, BarChart3, Sparkles, Video, VideoOff, UserCheck, Calculator, Timer } from 'lucide-react';
 import { Message, SpeechAnalyticsSummary } from '../types';
 
 interface ChatInterfaceProps {
@@ -379,11 +379,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [videoFeedback, setVideoFeedback] = useState<string | null>(null);
   const [flaggingMentor, setFlaggingMentor] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(120);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerExpired, setTimerExpired] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const lastSpokenMsgRef = useRef<string>('');
   const thinkingIntervalRef = useRef<any>(null);
+  const answerTimerRef = useRef<any>(null);
 
   // Rotate thinking messages
   useEffect(() => {
@@ -409,6 +414,51 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
     return () => clearInterval(interval);
   }, [isCoachTyping]);
+
+  // Timer: start when new coach message arrives (not the first one)
+  useEffect(() => {
+    if (!timerEnabled) return;
+    const coachMsgs = messages.filter(m => m.role === 'coach');
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'coach' && coachMsgs.length > 1) {
+      // Reset and start timer
+      setTimerSeconds(120);
+      setTimerActive(true);
+      setTimerExpired(false);
+      if (answerTimerRef.current) clearInterval(answerTimerRef.current);
+      answerTimerRef.current = setInterval(() => {
+        setTimerSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(answerTimerRef.current);
+            answerTimerRef.current = null;
+            setTimerActive(false);
+            setTimerExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    // Pause when student sends
+    if (lastMsg && lastMsg.role === 'student') {
+      if (answerTimerRef.current) {
+        clearInterval(answerTimerRef.current);
+        answerTimerRef.current = null;
+      }
+      setTimerActive(false);
+    }
+  }, [messages, timerEnabled]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (answerTimerRef.current) clearInterval(answerTimerRef.current); };
+  }, []);
+
+  const formatTimer = (s: number): string => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
 
   // Auto-scroll
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isCoachTyping]);
@@ -532,6 +582,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Timer Toggle */}
+          <button
+            className={`btn btn-ghost btn-xs btn-square ${timerEnabled ? 'text-warning' : 'text-base-content/50 hover:text-warning'}`}
+            onClick={() => {
+              setTimerEnabled(v => !v);
+              if (timerEnabled) {
+                if (answerTimerRef.current) { clearInterval(answerTimerRef.current); answerTimerRef.current = null; }
+                setTimerActive(false);
+                setTimerExpired(false);
+                setTimerSeconds(120);
+              }
+            }}
+            title={timerEnabled ? 'Disable 2-min timer' : 'Enable 2-min answer timer'}
+          >
+            <Timer size={16} />
+          </button>
+          {timerEnabled && (timerActive || timerExpired || timerSeconds < 120) && (
+            <span className={`badge badge-sm font-mono ${timerExpired ? 'badge-error animate-pulse' : 'badge-warning'}`}>
+              {formatTimer(timerSeconds)}
+            </span>
+          )}
           {/* Video Practice Button */}
           <button
             className="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-error"
@@ -637,6 +708,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {timerExpired && timerEnabled && (
+          <div className="alert alert-warning text-sm shadow-sm">
+            <Timer size={16} />
+            <span>⏰ Time's up! In real interviews, concise answers win.</span>
           </div>
         )}
 

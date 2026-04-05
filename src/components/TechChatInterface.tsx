@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layout,
+  Timer,
 } from 'lucide-react';
 
 interface Message {
@@ -49,12 +50,59 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
   const [mode, setMode] = useState<'text' | 'code'>('text');
   const [language, setLanguage] = useState('Python');
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(120);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerExpired, setTimerExpired] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const answerTimerRef = useRef<any>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isCoachTyping]);
+
+  // Timer: start when new coach message arrives (not the first one)
+  useEffect(() => {
+    if (!timerEnabled) return;
+    const coachMsgs = messages.filter(m => m.role === 'coach');
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'coach' && coachMsgs.length > 1) {
+      setTimerSeconds(120);
+      setTimerActive(true);
+      setTimerExpired(false);
+      if (answerTimerRef.current) clearInterval(answerTimerRef.current);
+      answerTimerRef.current = setInterval(() => {
+        setTimerSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(answerTimerRef.current);
+            answerTimerRef.current = null;
+            setTimerActive(false);
+            setTimerExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    if (lastMsg && lastMsg.role === 'student') {
+      if (answerTimerRef.current) {
+        clearInterval(answerTimerRef.current);
+        answerTimerRef.current = null;
+      }
+      setTimerActive(false);
+    }
+  }, [messages, timerEnabled]);
+
+  useEffect(() => {
+    return () => { if (answerTimerRef.current) clearInterval(answerTimerRef.current); };
+  }, []);
+
+  const formatTimer = (s: number): string => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -132,6 +180,26 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
           </span>
         </div>
         <div className="flex-none flex items-center gap-2">
+          <button
+            className={`btn btn-ghost btn-xs btn-square ${timerEnabled ? 'text-warning' : 'text-base-content/50 hover:text-warning'}`}
+            onClick={() => {
+              setTimerEnabled(v => !v);
+              if (timerEnabled) {
+                if (answerTimerRef.current) { clearInterval(answerTimerRef.current); answerTimerRef.current = null; }
+                setTimerActive(false);
+                setTimerExpired(false);
+                setTimerSeconds(120);
+              }
+            }}
+            title={timerEnabled ? 'Disable 2-min timer' : 'Enable 2-min answer timer'}
+          >
+            <Timer className="w-4 h-4" />
+          </button>
+          {timerEnabled && (timerActive || timerExpired || timerSeconds < 120) && (
+            <span className={`badge badge-sm font-mono ${timerExpired ? 'badge-error animate-pulse' : 'badge-warning'}`}>
+              {formatTimer(timerSeconds)}
+            </span>
+          )}
           <div className="badge badge-primary badge-outline font-mono">
             Q{questionNumber}/{TOTAL_QUESTIONS}
           </div>
@@ -159,6 +227,13 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
         {messages.map(renderMessage)}
+
+        {timerExpired && timerEnabled && (
+          <div className="alert alert-warning text-sm shadow-sm mx-2">
+            <Timer className="w-4 h-4" />
+            <span>⏰ Time's up! In real interviews, concise answers win.</span>
+          </div>
+        )}
 
         {isCoachTyping && (
           <div className="chat chat-start">

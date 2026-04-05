@@ -1,5 +1,6 @@
 import React from 'react';
-import { Mail, RotateCcw, Home, Terminal, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Mail, RotateCcw, Home, Terminal, CheckCircle2, AlertTriangle, FileDown } from 'lucide-react';
+import { exportTechScorecardPDF } from '../utils/pdfExport';
 
 interface ScoreCategory {
   category: string;
@@ -171,6 +172,19 @@ export const TechScorecard: React.FC<TechScorecardProps> = ({
               Email Scorecard
             </button>
           )}
+          <button
+            className="btn btn-accent btn-outline gap-2"
+            onClick={() => exportTechScorecardPDF({
+              studentName,
+              targetCompany,
+              scores,
+              overallScore,
+              coachNote,
+            })}
+          >
+            <FileDown className="w-5 h-5" />
+            Download PDF
+          </button>
           <button className="btn btn-secondary gap-2" onClick={onRestart}>
             <RotateCcw className="w-5 h-5" />
             Practice Again
