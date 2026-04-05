@@ -121,7 +121,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
               </p>
 
               {resumeMode === 'none' && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     className="btn btn-sm btn-outline btn-secondary flex-1"
                     onClick={() => fileInputRef.current?.click()}
@@ -186,6 +186,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
           <p className="text-xs text-base-content/40 text-center">
             5 questions · ~15 min · Scored on Foundation, Logic & Communication
           </p>
+
+          <div className="bg-base-300/30 rounded-lg px-3 py-2 mt-1">
+            <p className="text-xs text-base-content/40 text-center leading-relaxed">
+              🔒 <span className="font-semibold text-base-content/50">Your data is safe.</span> Resume & responses are processed in-session only — never stored on our servers. All API calls are encrypted via HTTPS. We don't share your data with third parties.
+            </p>
+          </div>
         </div>
       </div>
     </div>
