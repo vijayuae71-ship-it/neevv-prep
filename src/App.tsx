@@ -12,6 +12,10 @@ import { StoryBank } from './components/StoryBank';
 import { Preferences } from './components/Preferences';
 import { UpgradePlan } from './components/UpgradePlan';
 import { GetHelp } from './components/GetHelp';
+import { TechSetup } from './components/TechSetup';
+import { TechChatInterface } from './components/TechChatInterface';
+import { TechQuestionBank } from './components/TechQuestionBank';
+import { TechScorecard } from './components/TechScorecard';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
 import { sendMessage } from './utils/difyApi';
 import { analyzeSpeech, computeSummary } from './utils/speechAnalytics';
@@ -129,6 +133,20 @@ const App: React.FC = () => {
   const [mathAlert, setMathAlert] = useState<string | null>(null);
   const [mentorSent, setMentorSent] = useState(false);
 
+  // Tech Interview state
+  const [techPhase, setTechPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
+  const [techMessages, setTechMessages] = useState<Message[]>([]);
+  const [isTechCoachTyping, setIsTechCoachTyping] = useState(false);
+  const [isTechHintLoading, setIsTechHintLoading] = useState(false);
+  const [techProfile, setTechProfile] = useState<{ name: string; company: string; level: string; techStack: string[]; email: string } | null>(null);
+  const [techScorecardData, setTechScorecardData] = useState<{
+    scores: ScoreEntry[]; overallScore: number; coachNote: string;
+  } | null>(null);
+  const [techError, setTechError] = useState<string | null>(null);
+
+  const techConversationIdRef = useRef<string>('');
+  const techUserIdRef = useRef<string>('tech-' + Date.now().toString(36));
+
   const conversationIdRef = useRef<string>('');
   const userIdRef = useRef<string>('user-' + Date.now().toString(36));
   const voiceStartRef = useRef<number>(0);
@@ -149,6 +167,216 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // ═══════ TECH INTERVIEW HANDLERS ═══════
+
+  function detectTechScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
+    const lower = text.toLowerCase();
+    const hasScorecard = (lower.includes('scorecard') || lower.includes('score')) &&
+      (lower.includes('problem solving') || lower.includes('code quality') || lower.includes('optimization') || lower.includes('fundamentals'));
+
+    if (!hasScorecard) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
+
+    const scores: ScoreEntry[] = [];
+    const categories = [
+      { name: 'Problem Solving', patterns: ['problem solving', 'problem-solving'] },
+      { name: 'Code Quality', patterns: ['code quality', 'code-quality', 'syntax'] },
+      { name: 'Optimization', patterns: ['optimization', 'complexity', 'time/space'] },
+      { name: 'Fundamentals', patterns: ['fundamentals', 'concepts', 'foundation'] },
+    ];
+
+    for (const cat of categories) {
+      for (const pattern of cat.patterns) {
+        const scoreRegex = new RegExp(pattern + '[^\\d]*?(\\d{1,2})\\s*(?:\\/\\s*10|out of 10)?', 'i');
+        const match = text.match(scoreRegex);
+        if (match) {
+          const score = Math.min(10, Math.max(1, parseInt(match[1], 10)));
+          const catIdx = lower.indexOf(pattern);
+          const section = text.substring(catIdx, catIdx + 500);
+          const strengthMatch = section.match(/(?:strength|strong|positive)[:\s]*([^\n|*]+)/i);
+          const gapMatch = section.match(/(?:gap|improve|weak|critical|area)[:\s]*([^\n|*]+)/i);
+          scores.push({
+            category: cat.name,
+            score,
+            strength: strengthMatch ? strengthMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Good effort in this area.',
+            gap: gapMatch ? gapMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Room for improvement with more practice.',
+          });
+          break;
+        }
+      }
+    }
+
+    if (scores.length === 0) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
+
+    const overallScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
+    const noteMatch = text.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
+    const coachNote = noteMatch
+      ? noteMatch[1].trim().replace(/^\*+|\*+$/g, '').trim()
+      : `Your overall technical score is ${overallScore}/10. Keep coding and improving!`;
+
+    return { isScorecard: true, scores, overallScore, coachNote };
+  }
+
+  const handleTechStart = useCallback(async (name: string, company: string, level: string, techStack: string[], email: string) => {
+    setTechProfile({ name, company, level, techStack, email });
+    setTechPhase('interview');
+    setTechMessages([]);
+    setIsTechCoachTyping(true);
+    setTechError(null);
+
+    try {
+      const intro = `Hi, I'm ${name}. I'm preparing for technical interviews at ${company}. My experience level: ${level}. My tech stack: ${techStack.join(', ')}.
+
+I'm ready for my mock technical interview.
+
+IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
+1. You are neev Coach — a technical interview coach. Ask me 5 technical questions covering: DSA/coding (2 questions), SQL/database (1 question), language-specific concepts for ${techStack[0] || 'Python'} (1 question), and system design or problem solving (1 question).
+2. For coding questions: present the problem clearly, ask me to write code or pseudocode, then evaluate my approach, time complexity, space complexity, edge cases, and code quality.
+3. For SQL questions: give me a schema context (table names, columns) and ask me to write a query. Evaluate correctness, efficiency, and understanding of joins/subqueries/window functions.
+4. For concept questions: ask me to explain with examples. Probe deeper if my answer is surface-level.
+5. After each answer, provide feedback AND include an enhanced version under "### ✨ Enhanced Answer" showing a stronger version of MY answer.
+6. After 5 questions, generate the neevv Tech Scorecard with scores for: Problem Solving, Code Quality, Optimization, Fundamentals (each out of 10), with one strength and one critical gap per category.
+7. Adjust difficulty based on my experience level: ${level}.`;
+
+      const response = await sendMessage(intro, '', techUserIdRef.current);
+      techConversationIdRef.current = response.conversation_id;
+      setTechMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+    } catch (err) {
+      console.error('Failed to start tech interview:', err);
+      setTechError('Failed to connect to neev Coach. Please try again.');
+    } finally {
+      setIsTechCoachTyping(false);
+    }
+  }, []);
+
+  const handleTechSend = useCallback(async (text: string) => {
+    if (isTechCoachTyping) return;
+
+    const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: Date.now() };
+    setTechMessages((prev) => [...prev, studentMsg]);
+    setIsTechCoachTyping(true);
+    setTechError(null);
+
+    try {
+      const response = await sendMessage(text, techConversationIdRef.current, techUserIdRef.current);
+      techConversationIdRef.current = response.conversation_id;
+      const coachText = response.answer;
+      const coachMsg: Message = { id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() };
+      setTechMessages((prev) => [...prev, coachMsg]);
+
+      const scoreResult = detectTechScorecard(coachText);
+      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
+        setTechScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        setTimeout(() => setTechPhase('scorecard'), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to get tech coach response:', err);
+      setTechError('Failed to get a response. Please try sending again.');
+    } finally {
+      setIsTechCoachTyping(false);
+    }
+  }, [isTechCoachTyping]);
+
+  const handleTechHint = useCallback(async () => {
+    if (isTechCoachTyping || isTechHintLoading) return;
+    setIsTechHintLoading(true);
+    setTechError(null);
+
+    try {
+      const response = await sendMessage(
+        '[HINT REQUEST] I\'m stuck. Give me a brief hint — maybe the data structure to consider, the algorithm pattern, or the key concept. Just a nudge, NOT the full answer. 2-3 bullet points max.',
+        techConversationIdRef.current, techUserIdRef.current
+      );
+      techConversationIdRef.current = response.conversation_id;
+      const hintMsg: Message = { id: makeId(), role: 'coach', text: '💡 **Hint:**\n\n' + response.answer, timestamp: Date.now() };
+      setTechMessages((prev) => [...prev, hintMsg]);
+    } catch (err) {
+      console.error('Failed to get hint:', err);
+      setTechError('Couldn\'t load a hint. Try again.');
+    } finally {
+      setIsTechHintLoading(false);
+    }
+  }, [isTechCoachTyping, isTechHintLoading]);
+
+  const handleTechRequestScorecard = useCallback(async () => {
+    if (isTechCoachTyping) return;
+    setIsTechCoachTyping(true);
+    setTechError(null);
+
+    try {
+      const response = await sendMessage(
+        'Please generate my neevv Tech Scorecard now with scores for Problem Solving, Code Quality, Optimization, and Fundamentals (each out of 10), with specific strengths and critical gaps for each category. Include a final coach\'s note.',
+        techConversationIdRef.current, techUserIdRef.current
+      );
+      techConversationIdRef.current = response.conversation_id;
+      const coachMsg: Message = { id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() };
+      setTechMessages((prev) => [...prev, coachMsg]);
+
+      const scoreResult = detectTechScorecard(response.answer);
+      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
+        setTechScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        setTimeout(() => setTechPhase('scorecard'), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to generate tech scorecard:', err);
+      setTechError('Failed to generate scorecard. Please try again.');
+    } finally {
+      setIsTechCoachTyping(false);
+    }
+  }, [isTechCoachTyping]);
+
+  const handleTechRestart = useCallback(() => {
+    setTechPhase('setup');
+    setTechMessages([]);
+    setTechProfile(null);
+    setTechScorecardData(null);
+    setTechError(null);
+    techConversationIdRef.current = '';
+    techUserIdRef.current = 'tech-' + Date.now().toString(36);
+  }, []);
+
+  const handleTechEmailScorecard = useCallback(async (): Promise<boolean> => {
+    if (!techProfile?.email || !techScorecardData) return false;
+    try {
+      let emailBody = `🖥️ neevv Tech Scorecard\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+      emailBody += `Student: ${techProfile.name}\nTarget: ${techProfile.company}\nLevel: ${techProfile.level}\n`;
+      emailBody += `Tech Stack: ${techProfile.techStack.join(', ')}\nOverall Score: ${techScorecardData.overallScore}/10\n\n`;
+      for (const s of techScorecardData.scores) {
+        emailBody += `${s.category}: ${s.score}/10\n  ✅ ${s.strength}\n  ⚠️ ${s.gap}\n\n`;
+      }
+      emailBody += `Coach's Note: ${techScorecardData.coachNote}\n\n━━━━━━━━━━━━━━━━━━━━━━\nPowered by neevv Prep`;
+      const subject = encodeURIComponent(`🖥️ Your neevv Tech Scorecard — ${techScorecardData.overallScore}/10 | Target: ${techProfile.company}`);
+      const body = encodeURIComponent(emailBody);
+      window.open(`mailto:${techProfile.email}?subject=${subject}&body=${body}`, '_blank');
+      return true;
+    } catch (err) {
+      console.error('Failed to open email:', err);
+      return false;
+    }
+  }, [techProfile, techScorecardData]);
+
+  const handleTechPracticeQuestion = useCallback((question: string) => {
+    setPage('techinterview');
+    setTechPhase('interview');
+    setTechMessages([]);
+    setIsTechCoachTyping(true);
+    setTechError(null);
+    setTechProfile(prev => prev || { name: 'Student', company: 'Tech Company', level: 'Fresher', techStack: ['Python'], email: '' });
+
+    (async () => {
+      try {
+        const prompt = `The student wants to practice this specific technical question: "${question}"\n\nPlease present this question naturally as a technical interviewer, provide any necessary context (like table schemas for SQL, constraints for coding problems), then wait for their answer. Evaluate their code quality, approach, and complexity analysis.`;
+        const response = await sendMessage(prompt, '', techUserIdRef.current);
+        techConversationIdRef.current = response.conversation_id;
+        setTechMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+      } catch (err) {
+        console.error('Failed to start tech practice:', err);
+        setTechError('Failed to start practice. Please try again.');
+      } finally {
+        setIsTechCoachTyping(false);
+      }
+    })();
+  }, []);
+
   const handleNavigate = useCallback((p: Page) => {
     setPage(p);
     if (p === 'interview') {
@@ -159,7 +387,12 @@ const App: React.FC = () => {
         setScorecardData(null);
       }
     }
-  }, [phase]);
+    if (p === 'techinterview') {
+      if (techPhase === 'scorecard') {
+        handleTechRestart();
+      }
+    }
+  }, [phase, techPhase, handleTechRestart]);
 
   const handleStart = useCallback(async (name: string, targetSchool: string, background: string, email: string, resumeText: string) => {
     setProfile({ name, targetSchool, background, email, resumeText });
@@ -396,6 +629,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
         <LandingPage
           onStartInterview={() => handleNavigate('interview')}
           onGoToTools={() => handleNavigate('tools')}
+          onStartTechInterview={() => handleNavigate('techinterview')}
         />
       </>
     );
@@ -475,6 +709,64 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       </>
     );
   }
+
+  // ═══════ TECH INTERVIEW PAGES ═══════
+
+  if (page === 'techquestionbank') {
+    return (
+      <>
+        <Navbar currentPage="techquestionbank" onNavigate={handleNavigate} />
+        <TechQuestionBank onPractice={handleTechPracticeQuestion} />
+      </>
+    );
+  }
+
+  if (page === 'techinterview' && techPhase === 'setup') {
+    return (
+      <>
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <TechSetup onStart={handleTechStart} />
+      </>
+    );
+  }
+
+  if (page === 'techinterview' && techPhase === 'scorecard' && techScorecardData && techProfile) {
+    return (
+      <>
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <TechScorecard
+          studentName={techProfile.name}
+          targetCompany={techProfile.company}
+          scores={techScorecardData.scores}
+          overallScore={techScorecardData.overallScore}
+          coachNote={techScorecardData.coachNote}
+          studentEmail={techProfile.email}
+          onRestart={handleTechRestart}
+          onEmailScorecard={techProfile.email ? handleTechEmailScorecard : undefined}
+        />
+      </>
+    );
+  }
+
+  if (page === 'techinterview' && techPhase === 'interview') {
+    return (
+      <>
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <TechChatInterface
+          messages={techMessages}
+          onSend={handleTechSend}
+          onHint={handleTechHint}
+          isCoachTyping={isTechCoachTyping}
+          isHintLoading={isTechHintLoading}
+          questionNumber={Math.min(5, Math.floor(techMessages.length / 2))}
+          error={techError}
+          onRequestScorecard={handleTechRequestScorecard}
+        />
+      </>
+    );
+  }
+
+  // ═══════ MBA INTERVIEW PAGES ═══════
 
   if (page === 'interview' && phase === 'setup') {
     return (

@@ -3,10 +3,10 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut
+  HelpCircle, LogOut, Code2, Terminal
 } from 'lucide-react';
 
-export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help';
+export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank';
 
 interface NavbarProps {
   currentPage: Page;
@@ -30,6 +30,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
     { icon: <BookOpen size={20} />, label: 'Case Library', page: 'caselibrary' },
     { icon: <MessageSquareText size={20} />, label: 'Story Bank', page: 'storybank' },
     { icon: <Wrench size={20} />, label: 'Free Tools', page: 'tools', dividerAfter: true },
+    { icon: <Code2 size={20} />, label: '🆕 Tech Interview', page: 'techinterview' },
+    { icon: <Terminal size={20} />, label: 'Tech Question Bank', page: 'techquestionbank', dividerAfter: true },
     { icon: <Settings size={20} />, label: 'Preferences', page: 'preferences' },
     { icon: <CreditCard size={20} />, label: 'Upgrade Plan', page: 'upgrade' },
     { icon: <HelpCircle size={20} />, label: 'Get Help', page: 'help' },

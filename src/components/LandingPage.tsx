@@ -8,6 +8,7 @@ import {
 interface LandingPageProps {
   onStartInterview: () => void;
   onGoToTools: () => void;
+  onStartTechInterview?: () => void;
 }
 
 // Animated counter
@@ -47,7 +48,7 @@ const FAQItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
   );
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview }) => {
   return (
     <div className="min-h-screen bg-base-100">
       {/* ═══════ HERO ═══════ */}
@@ -80,11 +81,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
             Get scored on Foundation, Logic & Communication — with real-time speech analytics.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8 animate-slideUp">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4 animate-slideUp">
             <button className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" onClick={onStartInterview}>
-              Start Free Mock Interview <ArrowRight size={20} />
+              MBA Mock Interview <ArrowRight size={20} />
             </button>
-            <button className="btn btn-outline btn-lg gap-2" onClick={onGoToTools}>
+            {onStartTechInterview && (
+              <button className="btn btn-secondary btn-lg gap-2 shadow-lg shadow-secondary/25 hover:shadow-secondary/40 transition-shadow" onClick={onStartTechInterview}>
+                🖥️ Tech Interview <ArrowRight size={20} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-center gap-3 mb-8 animate-slideUp">
+            <button className="btn btn-outline btn-md gap-2" onClick={onGoToTools}>
               Explore Free Tools
             </button>
           </div>
