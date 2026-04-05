@@ -1,0 +1,526 @@
+import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { Navbar, Page } from './components/Navbar';
+import { LandingPage } from './components/LandingPage';
+import { FreeTools } from './components/FreeTools';
+import { SetupScreen } from './components/SetupScreen';
+import { ChatInterface } from './components/ChatInterface';
+import { Scorecard } from './components/Scorecard';
+import { QuestionBank } from './components/QuestionBank';
+import { DailyPractice } from './components/DailyPractice';
+import { CaseLibrary } from './components/CaseLibrary';
+import { StoryBank } from './components/StoryBank';
+import { Preferences } from './components/Preferences';
+import { UpgradePlan } from './components/UpgradePlan';
+import { GetHelp } from './components/GetHelp';
+import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
+import { sendMessage } from './utils/difyApi';
+import { analyzeSpeech, computeSummary } from './utils/speechAnalytics';
+import { validateMath, isGuesstimateLikelyAnswer } from './utils/mathValidator';
+
+function makeId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Detect scorecard in AI response
+function detectScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
+  const lower = text.toLowerCase();
+  const hasScorecard = (lower.includes('scorecard') || lower.includes('score')) &&
+    (lower.includes('foundation') || lower.includes('logic') || lower.includes('communication'));
+
+  if (!hasScorecard) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
+
+  const scores: ScoreEntry[] = [];
+  const categories = [
+    { name: 'Foundation', patterns: ['foundation'] },
+    { name: 'Logic', patterns: ['logic', 'analytical'] },
+    { name: 'Communication', patterns: ['communication', 'articulation'] },
+  ];
+
+  for (const cat of categories) {
+    for (const pattern of cat.patterns) {
+      const scoreRegex = new RegExp(pattern + '[^\\d]*?(\\d{1,2})\\s*(?:\\/\\s*10|out of 10)?', 'i');
+      const match = text.match(scoreRegex);
+      if (match) {
+        const score = Math.min(10, Math.max(1, parseInt(match[1], 10)));
+        const catIdx = lower.indexOf(pattern);
+        const section = text.substring(catIdx, catIdx + 500);
+        const strengthMatch = section.match(/(?:strength|strong|positive)[:\s]*([^\n|*]+)/i);
+        const gapMatch = section.match(/(?:gap|improve|weak|critical|area)[:\s]*([^\n|*]+)/i);
+        scores.push({
+          category: cat.name,
+          score,
+          strength: strengthMatch ? strengthMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Demonstrated solid effort in this area.',
+          gap: gapMatch ? gapMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Room for improvement with focused practice.',
+        });
+        break;
+      }
+    }
+  }
+
+  if (scores.length === 0) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
+
+  const overallScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
+  const noteMatch = text.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
+  const coachNote = noteMatch
+    ? noteMatch[1].trim().replace(/^\*+|\*+$/g, '').trim()
+    : `Your overall score is ${overallScore}/10. Keep practicing to strengthen your foundation!`;
+
+  return { isScorecard: true, scores, overallScore, coachNote };
+}
+
+function estimateQuestion(messageCount: number): number {
+  const pairs = Math.floor(messageCount / 2);
+  if (pairs <= 1) return 0;
+  if (pairs <= 2) return 1;
+  if (pairs <= 3) return 2;
+  if (pairs <= 4) return 3;
+  if (pairs <= 5) return 4;
+  return 5;
+}
+
+function formatScorecardText(
+  studentName: string, targetSchool: string, scores: ScoreEntry[],
+  overallScore: number, coachNote: string, speechSummary: SpeechAnalyticsSummary
+): string {
+  let text = `🎓 neevv Scorecard\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `Student: ${studentName}\n`;
+  text += `Target: ${targetSchool}\n`;
+  text += `Overall Score: ${overallScore}/10\n\n`;
+  text += `📊 Category Scores\n────────────────────\n`;
+
+  for (const s of scores) {
+    text += `\n${s.category}: ${s.score}/10\n`;
+    text += `  ✅ Strength: ${s.strength}\n`;
+    text += `  ⚠️ Gap: ${s.gap}\n`;
+  }
+
+  if (speechSummary.totalWordCount > 0) {
+    text += `\n🎙️ Communication Analytics\n────────────────────\n`;
+    text += `  Words Spoken: ${speechSummary.totalWordCount}\n`;
+    if (speechSummary.avgWpm > 0) text += `  Pacing: ${speechSummary.avgWpm} wpm\n`;
+    text += `  Filler Words: ${speechSummary.totalFillerCount} (${speechSummary.fillerRate}% rate)\n`;
+    if (speechSummary.topFillers.length > 0) {
+      text += `  Top Fillers: ${speechSummary.topFillers.map((f) => `"${f.word}" ×${f.count}`).join(', ')}\n`;
+    }
+    if (speechSummary.bschoolTermsUsed.length > 0) {
+      text += `  B-School Terms Used: ${speechSummary.bschoolTermsUsed.join(', ')}\n`;
+    }
+  }
+
+  text += `\n💬 Coach's Note\n────────────────────\n`;
+  text += `${coachNote}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `Powered by neevv Prep · Your B-school interview foundation`;
+  return text;
+}
+
+const App: React.FC = () => {
+  const [page, setPage] = useState<Page>('landing');
+  const [phase, setPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isCoachTyping, setIsCoachTyping] = useState(false);
+  const [isHintLoading, setIsHintLoading] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; targetSchool: string; background: string; email: string; resumeText: string } | null>(null);
+  const [scorecardData, setScorecardData] = useState<{
+    scores: ScoreEntry[]; overallScore: number; coachNote: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [mathAlert, setMathAlert] = useState<string | null>(null);
+  const [mentorSent, setMentorSent] = useState(false);
+
+  const conversationIdRef = useRef<string>('');
+  const userIdRef = useRef<string>('user-' + Date.now().toString(36));
+  const voiceStartRef = useRef<number>(0);
+  const isGuesstimateModeRef = useRef<boolean>(false);
+
+  const speechSummary = useMemo(() => computeSummary(messages), [messages]);
+
+  const updateGuesstimatMode = useCallback((coachText: string) => {
+    const lower = coachText.toLowerCase();
+    if (lower.includes('guesstimate') || lower.includes('estimate') || lower.includes('market size') ||
+        lower.includes('how many') || lower.includes('how much') || lower.includes('data exhibit') ||
+        lower.includes('calculation') || lower.includes('step-by-step')) {
+      isGuesstimateModeRef.current = true;
+    }
+    if (lower.includes('why this') || lower.includes('why now') || lower.includes('why mba') ||
+        lower.includes('scorecard')) {
+      isGuesstimateModeRef.current = false;
+    }
+  }, []);
+
+  const handleNavigate = useCallback((p: Page) => {
+    setPage(p);
+    if (p === 'interview') {
+      if (phase === 'scorecard') {
+        setPhase('setup');
+        setMessages([]);
+        setProfile(null);
+        setScorecardData(null);
+      }
+    }
+  }, [phase]);
+
+  const handleStart = useCallback(async (name: string, targetSchool: string, background: string, email: string, resumeText: string) => {
+    setProfile({ name, targetSchool, background, email, resumeText });
+    setPhase('interview');
+    setMessages([]);
+    setIsCoachTyping(true);
+    setError(null);
+    setMathAlert(null);
+
+    try {
+      let intro = `Hi, I'm ${name}. I'm targeting ${targetSchool} for my MBA. My professional background: ${background}.`;
+
+      if (resumeText) {
+        intro += `\n\nHere is my detailed resume/CV for context — use this to personalize your questions, reference specific projects/roles I've worked on, and tailor feedback to my actual experience:\n\n--- RESUME START ---\n${resumeText}\n--- RESUME END ---\n`;
+      }
+
+      intro += `\n\nI'm ready for my mock interview.
+
+IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
+1. For behavioral questions, enforce the STAR method. If my Action is weak or vague, pause and ask me to refine it before moving on.${resumeText ? ' Reference specific roles, projects, or achievements from my resume when asking behavioral questions.' : ''}
+2. For the guesstimate question, ALWAYS present a brief data context or scenario first (like a mini data exhibit with some numbers or a market scenario), then ask me to estimate. ALWAYS ask me to show step-by-step math and calculations. Do NOT accept a final number without seeing the breakdown. Evaluate my framework (top-down/bottom-up segmentation), NOT the accuracy of the final number.
+3. After each of my answers, provide your feedback AND include an enhanced version of my answer under the heading "### ✨ Enhanced Version" — this should be MY answer rewritten in a stronger, more structured way (not a generic model answer). Keep it concise.
+4. After completing all 5 questions, generate the neevv Scorecard with scores for Foundation, Logic, and Communication (each out of 10), with one specific strength and one critical gap per category.
+5. Track whether I use B-school vocabulary (ROI, stakeholder, cross-functional, data-driven, scalable, etc.) and mention it in feedback.${resumeText ? '\n6. Since you have my resume, ask questions that probe deeper into MY specific experiences rather than generic scenarios. Challenge me on gaps or transitions in my career.' : ''}`;
+
+      const response = await sendMessage(intro, '', userIdRef.current);
+      conversationIdRef.current = response.conversation_id;
+      const coachText = response.answer;
+      updateGuesstimatMode(coachText);
+      setMessages([{ id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() }]);
+    } catch (err) {
+      console.error('Failed to start interview:', err);
+      setError('Failed to connect to the neev Coach. Please try again.');
+    } finally {
+      setIsCoachTyping(false);
+    }
+  }, [updateGuesstimatMode]);
+
+  const handleSend = useCallback(async (text: string) => {
+    if (isCoachTyping) return;
+
+    if (isGuesstimateModeRef.current && isGuesstimateLikelyAnswer(text)) {
+      const validation = validateMath(text);
+      if (validation.hasErrors) {
+        setMathAlert(validation.summary);
+        const now = Date.now();
+        const durationMs = voiceStartRef.current > 0 ? now - voiceStartRef.current : text.split(/\s+/).length * 400;
+        const stats = analyzeSpeech(text, durationMs);
+        voiceStartRef.current = 0;
+        const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: now, speechStats: stats };
+        setMessages((prev) => [...prev, studentMsg]);
+        const mathErrorMsg: Message = {
+          id: makeId(), role: 'coach', text: validation.summary + '\n\n*Your answer has been held — please correct your math and resubmit. The coach will review once the calculations are right.*',
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, mathErrorMsg]);
+        return;
+      }
+    }
+
+    setMathAlert(null);
+    const now = Date.now();
+    const durationMs = voiceStartRef.current > 0 ? now - voiceStartRef.current : text.split(/\s+/).length * 400;
+    const stats = analyzeSpeech(text, durationMs);
+    voiceStartRef.current = 0;
+    const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: now, speechStats: stats };
+    setMessages((prev) => [...prev, studentMsg]);
+    setIsCoachTyping(true);
+    setError(null);
+
+    try {
+      const enhancedText = isGuesstimateModeRef.current
+        ? text + '\n\n[SYSTEM NOTE: This student\'s arithmetic has been validated by our math checker — all calculations check out.]'
+        : text;
+
+      const response = await sendMessage(enhancedText, conversationIdRef.current, userIdRef.current);
+      conversationIdRef.current = response.conversation_id;
+      const coachText = response.answer;
+      updateGuesstimatMode(coachText);
+      const coachMsg: Message = { id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() };
+      setMessages((prev) => [...prev, coachMsg]);
+
+      const scoreResult = detectScorecard(coachText);
+      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
+        setScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        setTimeout(() => setPhase('scorecard'), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to get coach response:', err);
+      setError('Failed to get a response. Please try sending again.');
+    } finally {
+      setIsCoachTyping(false);
+    }
+  }, [isCoachTyping, updateGuesstimatMode]);
+
+  const handleHint = useCallback(async () => {
+    if (isCoachTyping || isHintLoading) return;
+    setIsHintLoading(true);
+    setError(null);
+
+    try {
+      const response = await sendMessage(
+        '[HINT REQUEST] I\'m stuck. Give me a brief framework hint or nudge to get started — just the approach, NOT the full answer. Keep it to 2-3 bullet points max.',
+        conversationIdRef.current, userIdRef.current
+      );
+      conversationIdRef.current = response.conversation_id;
+      const hintMsg: Message = { id: makeId(), role: 'coach', text: '💡 **Nudge:**\n\n' + response.answer, timestamp: Date.now() };
+      setMessages((prev) => [...prev, hintMsg]);
+    } catch (err) {
+      console.error('Failed to get hint:', err);
+      setError('Couldn\'t load a hint. Try again.');
+    } finally {
+      setIsHintLoading(false);
+    }
+  }, [isCoachTyping, isHintLoading]);
+
+  const handleFlagForMentor = useCallback(async (studentAnswer: string, questionContext: string) => {
+    if (mentorSent) return;
+    try {
+      const subject = encodeURIComponent(`👨‍🏫 Mentor Review: ${profile?.name || 'Student'} — neevv Prep`);
+      const body = encodeURIComponent(
+        `neevv Prep — Student Answer Flagged for Mentor Review\n\n` +
+        `Student: ${profile?.name || 'Unknown'}\n` +
+        `Target School: ${profile?.targetSchool || 'Unknown'}\n` +
+        `Background: ${profile?.background || 'Unknown'}\n\n` +
+        `---\n\n` +
+        `Coach Question:\n${questionContext}\n\n` +
+        `Student Answer:\n${studentAnswer}\n\n` +
+        `---\n\n` +
+        `Please reply with your personal tip or advice.`
+      );
+      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+      setMentorSent(true);
+      setTimeout(() => setMentorSent(false), 60000);
+      return true;
+    } catch (err) {
+      console.error('Failed to open mentor email:', err);
+      return false;
+    }
+  }, [profile, mentorSent]);
+
+  const handleRestart = useCallback(() => {
+    setPhase('setup');
+    setMessages([]);
+    setProfile(null);
+    setScorecardData(null);
+    setError(null);
+    setMathAlert(null);
+    setMentorSent(false);
+    conversationIdRef.current = '';
+    userIdRef.current = 'user-' + Date.now().toString(36);
+    isGuesstimateModeRef.current = false;
+  }, []);
+
+  const handleBackToHome = useCallback(() => {
+    setPage('landing');
+  }, []);
+
+  const handlePracticeQuestion = useCallback((question: string) => {
+    setPage('interview');
+    setPhase('interview');
+    setMessages([]);
+    setIsCoachTyping(true);
+    setError(null);
+    setMathAlert(null);
+    setProfile(prev => prev || { name: 'Student', targetSchool: 'IIM A', background: 'Professional', email: '', resumeText: '' });
+
+    (async () => {
+      try {
+        const prompt = `The student wants to practice this specific question: "${question}"\n\nPlease present this question naturally as if you're the interview coach, then wait for their answer. Follow all the same coaching rules (STAR method for behavioral, step-by-step math for guesstimates, etc.)`;
+        const response = await sendMessage(prompt, '', userIdRef.current);
+        conversationIdRef.current = response.conversation_id;
+        updateGuesstimatMode(response.answer);
+        setMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+      } catch (err) {
+        console.error('Failed to start practice:', err);
+        setError('Failed to start practice. Please try again.');
+      } finally {
+        setIsCoachTyping(false);
+      }
+    })();
+  }, [updateGuesstimatMode]);
+
+  const handleRequestScorecard = useCallback(async () => {
+    if (isCoachTyping) return;
+    setIsCoachTyping(true);
+    setError(null);
+
+    try {
+      const response = await sendMessage(
+        'Please generate my neevv Scorecard now with scores for Foundation, Logic, and Communication (each out of 10), with specific strengths and critical gaps for each category. Include a final coach\'s note.',
+        conversationIdRef.current, userIdRef.current
+      );
+      conversationIdRef.current = response.conversation_id;
+      const coachMsg: Message = { id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() };
+      setMessages((prev) => [...prev, coachMsg]);
+
+      const scoreResult = detectScorecard(response.answer);
+      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
+        setScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
+        setTimeout(() => setPhase('scorecard'), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to generate scorecard:', err);
+      setError('Failed to generate scorecard. Please try again.');
+    } finally {
+      setIsCoachTyping(false);
+    }
+  }, [isCoachTyping]);
+
+  const handleEmailScorecard = useCallback(async (): Promise<boolean> => {
+    if (!profile?.email || !scorecardData) return false;
+    try {
+      const emailBody = formatScorecardText(
+        profile.name, profile.targetSchool, scorecardData.scores,
+        scorecardData.overallScore, scorecardData.coachNote, speechSummary
+      );
+      const subject = encodeURIComponent(`🎓 Your neevv Scorecard — ${scorecardData.overallScore}/10 | Target: ${profile.targetSchool}`);
+      const body = encodeURIComponent(emailBody);
+      window.open(`mailto:${profile.email}?subject=${subject}&body=${body}`, '_blank');
+      return true;
+    } catch (err) {
+      console.error('Failed to open email:', err);
+      return false;
+    }
+  }, [profile, scorecardData, speechSummary]);
+
+  // ═══════ RENDER ═══════
+
+  if (page === 'landing') {
+    return (
+      <>
+        <Navbar currentPage="landing" onNavigate={handleNavigate} />
+        <LandingPage
+          onStartInterview={() => handleNavigate('interview')}
+          onGoToTools={() => handleNavigate('tools')}
+        />
+      </>
+    );
+  }
+
+  if (page === 'tools') {
+    return (
+      <>
+        <Navbar currentPage="tools" onNavigate={handleNavigate} />
+        <FreeTools
+          onBack={handleBackToHome}
+          onStartInterview={() => handleNavigate('interview')}
+        />
+      </>
+    );
+  }
+
+  if (page === 'questionbank') {
+    return (
+      <>
+        <Navbar currentPage="questionbank" onNavigate={handleNavigate} />
+        <QuestionBank onPractice={handlePracticeQuestion} />
+      </>
+    );
+  }
+
+  if (page === 'dailypractice') {
+    return (
+      <>
+        <Navbar currentPage="dailypractice" onNavigate={handleNavigate} />
+        <DailyPractice onPractice={handlePracticeQuestion} />
+      </>
+    );
+  }
+
+  if (page === 'caselibrary') {
+    return (
+      <>
+        <Navbar currentPage="caselibrary" onNavigate={handleNavigate} />
+        <CaseLibrary />
+      </>
+    );
+  }
+
+  if (page === 'storybank') {
+    return (
+      <>
+        <Navbar currentPage="storybank" onNavigate={handleNavigate} />
+        <StoryBank />
+      </>
+    );
+  }
+
+  if (page === 'preferences') {
+    return (
+      <>
+        <Navbar currentPage="preferences" onNavigate={handleNavigate} />
+        <Preferences />
+      </>
+    );
+  }
+
+  if (page === 'upgrade') {
+    return (
+      <>
+        <Navbar currentPage="upgrade" onNavigate={handleNavigate} />
+        <UpgradePlan />
+      </>
+    );
+  }
+
+  if (page === 'help') {
+    return (
+      <>
+        <Navbar currentPage="help" onNavigate={handleNavigate} />
+        <GetHelp />
+      </>
+    );
+  }
+
+  if (page === 'interview' && phase === 'setup') {
+    return (
+      <>
+        <Navbar currentPage="interview" onNavigate={handleNavigate} />
+        <SetupScreen onStart={handleStart} />
+      </>
+    );
+  }
+
+  if (page === 'interview' && phase === 'scorecard' && scorecardData && profile) {
+    return (
+      <>
+        <Navbar currentPage="interview" onNavigate={handleNavigate} />
+        <Scorecard
+          studentName={profile.name}
+          targetSchool={profile.targetSchool}
+          scores={scorecardData.scores}
+          overallScore={scorecardData.overallScore}
+          coachNote={scorecardData.coachNote}
+          studentEmail={profile.email}
+          onRestart={handleRestart}
+          onEmailScorecard={profile.email ? handleEmailScorecard : undefined}
+          speechSummary={speechSummary}
+        />
+      </>
+    );
+  }
+
+  // Interview chat
+  return (
+    <ChatInterface
+      messages={messages}
+      onSend={handleSend}
+      onHint={handleHint}
+      isCoachTyping={isCoachTyping}
+      isHintLoading={isHintLoading}
+      questionNumber={estimateQuestion(messages.length)}
+      error={error}
+      onRequestScorecard={handleRequestScorecard}
+      speechSummary={speechSummary}
+      mathAlert={mathAlert}
+      onFlagForMentor={handleFlagForMentor}
+      mentorSent={mentorSent}
+    />
+  );
+};
+
+export default App;
