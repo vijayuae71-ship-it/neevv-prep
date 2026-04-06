@@ -3,6 +3,10 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[[edge_functions]]
+  function = "dify-stream"
+  path = "/api/dify-stream"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

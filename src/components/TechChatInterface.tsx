@@ -30,6 +30,7 @@ interface TechChatInterfaceProps {
   questionNumber: number;
   error: string | null;
   onRequestScorecard: () => void;
+  isStreaming?: boolean;
 }
 
 const TOTAL_QUESTIONS = 5;
@@ -45,6 +46,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
   questionNumber,
   error,
   onRequestScorecard,
+  isStreaming = false,
 }) => {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'text' | 'code'>('text');
@@ -162,7 +164,12 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
               </pre>
             </div>
           ) : (
-            <div className="whitespace-pre-wrap">{msg.text}</div>
+            <div className="whitespace-pre-wrap">
+              {msg.text}
+              {isCoach && isStreaming && msg.id === messages[messages.length - 1]?.id && msg.text && (
+                <span className="inline-block w-1.5 h-4 bg-primary ml-0.5 animate-pulse rounded-sm" />
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -235,7 +242,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
           </div>
         )}
 
-        {isCoachTyping && (
+        {isCoachTyping && !isStreaming && (
           <div className="chat chat-start">
             <div className="chat-header text-xs opacity-70 mb-1">🤖 Tech Coach</div>
             <div className="chat-bubble chat-bubble-primary">

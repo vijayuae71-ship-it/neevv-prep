@@ -17,8 +17,9 @@ import { TechChatInterface } from './components/TechChatInterface';
 import { TechQuestionBank } from './components/TechQuestionBank';
 import { TechScorecard } from './components/TechScorecard';
 import { ProgressDashboard } from './components/ProgressDashboard';
+import { AuthScreen } from './components/AuthScreen';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
-import { sendMessage } from './utils/difyApi';
+import { sendMessage, sendMessageStreaming } from './utils/difyApi';
 import { getJSON, setJSON } from './utils/localStorage';
 import { analyzeSpeech, computeSummary } from './utils/speechAnalytics';
 import { validateMath, isGuesstimateLikelyAnswer } from './utils/mathValidator';
@@ -122,10 +123,31 @@ function formatScorecardText(
 }
 
 const App: React.FC = () => {
+  // ═══════ AUTH STATE ═══════
+  const [authUser, setAuthUser] = useState<{ name: string; email: string } | null>(() => {
+    try {
+      const raw = localStorage.getItem('neevv_auth');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+
+  const handleLogin = useCallback((name: string, email: string) => {
+    const user = { name, email };
+    setAuthUser(user);
+    localStorage.setItem('neevv_auth', JSON.stringify(user));
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setAuthUser(null);
+    localStorage.removeItem('neevv_auth');
+    setPage('landing');
+  }, []);
+
   const [page, setPage] = useState<Page>('landing');
   const [phase, setPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isCoachTyping, setIsCoachTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [isHintLoading, setIsHintLoading] = useState(false);
   const [profile, setProfile] = useState<{ name: string; targetSchool: string; background: string; email: string; resumeText: string } | null>(null);
   const [scorecardData, setScorecardData] = useState<{
@@ -139,6 +161,7 @@ const App: React.FC = () => {
   const [techPhase, setTechPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
   const [techMessages, setTechMessages] = useState<Message[]>([]);
   const [isTechCoachTyping, setIsTechCoachTyping] = useState(false);
+  const [isTechStreaming, setIsTechStreaming] = useState(false);
   const [isTechHintLoading, setIsTechHintLoading] = useState(false);
   const [techProfile, setTechProfile] = useState<{ name: string; company: string; level: string; techStack: string[]; email: string } | null>(null);
   const [techScorecardData, setTechScorecardData] = useState<{
@@ -246,6 +269,7 @@ const App: React.FC = () => {
     setTechPhase('interview');
     setTechMessages([]);
     setIsTechCoachTyping(true);
+    setIsTechStreaming(true);
     setTechError(null);
 
     try {
@@ -255,21 +279,36 @@ I'm ready for my mock technical interview.
 
 IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
 1. You are neev Coach — a technical interview coach. Ask me 5 technical questions covering: DSA/coding (2 questions), SQL/database (1 question), language-specific concepts for ${techStack[0] || 'Python'} (1 question), and system design or problem solving (1 question).
-2. For coding questions: present the problem clearly, ask me to write code or pseudocode, then evaluate my approach, time complexity, space complexity, edge cases, and code quality.
-3. For SQL questions: give me a schema context (table names, columns) and ask me to write a query. Evaluate correctness, efficiency, and understanding of joins/subqueries/window functions.
+2. For coding questions: present the problem clearly, ask me to write code or pseudocode, then evaluate my approach, time complexity, space complexity, edge cases, and code quality. After evaluating, always provide the optimal time and space complexity analysis.
+3. For SQL questions: ALWAYS give me a complete schema context with table names, column names, and sample data BEFORE asking the query. Evaluate correctness, efficiency, and understanding of joins/subqueries/window functions.
 4. For concept questions: ask me to explain with examples. Probe deeper if my answer is surface-level.
 5. After each answer, provide feedback AND include an enhanced version under "### ✨ Enhanced Answer" showing a stronger version of MY answer.
 6. After 5 questions, generate the neevv Tech Scorecard with scores for: Problem Solving, Code Quality, Optimization, Fundamentals (each out of 10), with one strength and one critical gap per category.
-7. Adjust difficulty based on my experience level: ${level}.`;
+7. Adjust difficulty based on my experience level: ${level}. Use progressive difficulty — start easy and increase to medium/hard.
+8. Scorecard Format: When generating the neevv Tech Scorecard, use EXACTLY this format:
+   - Problem Solving: X/10 | Strength: ... | Gap: ...
+   - Code Quality: X/10 | Strength: ... | Gap: ...
+   - Optimization: X/10 | Strength: ... | Gap: ...
+   - Fundamentals: X/10 | Strength: ... | Gap: ...
+   - Overall: X/10
+   - Coach's Note: (2-3 sentences of personalized advice)
+9. Be encouraging but honest. If my code or answer is incorrect, explain WHY and what the correct approach is.
+10. Always end the interview with "[INTERVIEW_COMPLETE]" marker after generating the scorecard.`;
 
-      const response = await sendMessage(intro, '', techUserIdRef.current);
+      const coachMsgId = makeId();
+      setTechMessages([{ id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(intro, '', techUserIdRef.current, (partial) => {
+        setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+      });
       techConversationIdRef.current = response.conversation_id;
-      setTechMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+      setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
     } catch (err) {
       console.error('Failed to start tech interview:', err);
       setTechError('Failed to connect to neev Coach. Please try again.');
     } finally {
       setIsTechCoachTyping(false);
+      setIsTechStreaming(false);
     }
   }, []);
 
@@ -279,14 +318,19 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: Date.now() };
     setTechMessages((prev) => [...prev, studentMsg]);
     setIsTechCoachTyping(true);
+    setIsTechStreaming(true);
     setTechError(null);
 
     try {
-      const response = await sendMessage(text, techConversationIdRef.current, techUserIdRef.current);
+      const coachMsgId = makeId();
+      setTechMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(text, techConversationIdRef.current, techUserIdRef.current, (partial) => {
+        setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+      });
       techConversationIdRef.current = response.conversation_id;
       const coachText = response.answer;
-      const coachMsg: Message = { id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() };
-      setTechMessages((prev) => [...prev, coachMsg]);
+      setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: coachText } : m));
 
       const scoreResult = detectTechScorecard(coachText);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
@@ -299,43 +343,57 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       setTechError('Failed to get a response. Please try sending again.');
     } finally {
       setIsTechCoachTyping(false);
+      setIsTechStreaming(false);
     }
   }, [isTechCoachTyping, techProfile, saveSessionToProgress]);
 
   const handleTechHint = useCallback(async () => {
     if (isTechCoachTyping || isTechHintLoading) return;
     setIsTechHintLoading(true);
+    setIsTechStreaming(true);
     setTechError(null);
 
     try {
-      const response = await sendMessage(
+      const coachMsgId = makeId();
+      setTechMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(
         '[HINT REQUEST] I\'m stuck. Give me a brief hint — maybe the data structure to consider, the algorithm pattern, or the key concept. Just a nudge, NOT the full answer. 2-3 bullet points max.',
-        techConversationIdRef.current, techUserIdRef.current
+        techConversationIdRef.current, techUserIdRef.current,
+        (partial) => {
+          setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Hint:**\n\n' + partial } : m));
+        }
       );
       techConversationIdRef.current = response.conversation_id;
-      const hintMsg: Message = { id: makeId(), role: 'coach', text: '💡 **Hint:**\n\n' + response.answer, timestamp: Date.now() };
-      setTechMessages((prev) => [...prev, hintMsg]);
+      setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Hint:**\n\n' + response.answer } : m));
     } catch (err) {
       console.error('Failed to get hint:', err);
       setTechError('Couldn\'t load a hint. Try again.');
     } finally {
       setIsTechHintLoading(false);
+      setIsTechStreaming(false);
     }
   }, [isTechCoachTyping, isTechHintLoading]);
 
   const handleTechRequestScorecard = useCallback(async () => {
     if (isTechCoachTyping) return;
     setIsTechCoachTyping(true);
+    setIsTechStreaming(true);
     setTechError(null);
 
     try {
-      const response = await sendMessage(
+      const coachMsgId = makeId();
+      setTechMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(
         'Please generate my neevv Tech Scorecard now with scores for Problem Solving, Code Quality, Optimization, and Fundamentals (each out of 10), with specific strengths and critical gaps for each category. Include a final coach\'s note.',
-        techConversationIdRef.current, techUserIdRef.current
+        techConversationIdRef.current, techUserIdRef.current,
+        (partial) => {
+          setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+        }
       );
       techConversationIdRef.current = response.conversation_id;
-      const coachMsg: Message = { id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() };
-      setTechMessages((prev) => [...prev, coachMsg]);
+      setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
 
       const scoreResult = detectTechScorecard(response.answer);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
@@ -348,6 +406,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       setTechError('Failed to generate scorecard. Please try again.');
     } finally {
       setIsTechCoachTyping(false);
+      setIsTechStreaming(false);
     }
   }, [isTechCoachTyping, techProfile, saveSessionToProgress]);
 
@@ -386,23 +445,31 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     setTechPhase('interview');
     setTechMessages([]);
     setIsTechCoachTyping(true);
+    setIsTechStreaming(true);
     setTechError(null);
-    setTechProfile(prev => prev || { name: 'Student', company: 'Tech Company', level: 'Fresher', techStack: ['Python'], email: '' });
+    setTechProfile(prev => prev || { name: authUser?.name || 'Student', company: 'Tech Company', level: 'Fresher', techStack: ['Python'], email: authUser?.email || '' });
 
     (async () => {
       try {
         const prompt = `The student wants to practice this specific technical question: "${question}"\n\nPlease present this question naturally as a technical interviewer, provide any necessary context (like table schemas for SQL, constraints for coding problems), then wait for their answer. Evaluate their code quality, approach, and complexity analysis.`;
-        const response = await sendMessage(prompt, '', techUserIdRef.current);
+
+        const coachMsgId = makeId();
+        setTechMessages([{ id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+        const response = await sendMessageStreaming(prompt, '', techUserIdRef.current, (partial) => {
+          setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+        });
         techConversationIdRef.current = response.conversation_id;
-        setTechMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+        setTechMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
       } catch (err) {
         console.error('Failed to start tech practice:', err);
         setTechError('Failed to start practice. Please try again.');
       } finally {
         setIsTechCoachTyping(false);
+        setIsTechStreaming(false);
       }
     })();
-  }, []);
+  }, [authUser]);
 
   const handleNavigate = useCallback((p: Page) => {
     setPage(p);
@@ -426,6 +493,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     setPhase('interview');
     setMessages([]);
     setIsCoachTyping(true);
+    setIsStreaming(true);
     setError(null);
     setMathAlert(null);
 
@@ -440,21 +508,40 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
 
 IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
 1. For behavioral questions, enforce the STAR method. If my Action is weak or vague, pause and ask me to refine it before moving on.${resumeText ? ' Reference specific roles, projects, or achievements from my resume when asking behavioral questions.' : ''}
-2. For the guesstimate question, ALWAYS present a brief data context or scenario first (like a mini data exhibit with some numbers or a market scenario), then ask me to estimate. ALWAYS ask me to show step-by-step math and calculations. Do NOT accept a final number without seeing the breakdown. Evaluate my framework (top-down/bottom-up segmentation), NOT the accuracy of the final number.
+2. For the guesstimate question, ALWAYS present a brief data context or scenario first (like a mini data exhibit with 2-3 specific numbers or a market scenario), then ask me to estimate. ALWAYS ask me to show step-by-step math and calculations. Do NOT accept a final number without seeing the breakdown. Evaluate my framework (top-down/bottom-up segmentation), NOT the accuracy of the final number.
 3. After each of my answers, provide your feedback AND include an enhanced version of my answer under the heading "### ✨ Enhanced Version" — this should be MY answer rewritten in a stronger, more structured way (not a generic model answer). Keep it concise.
 4. After completing all 5 questions, generate the neevv Scorecard with scores for Foundation, Logic, and Communication (each out of 10), with one specific strength and one critical gap per category.
-5. Track whether I use B-school vocabulary (ROI, stakeholder, cross-functional, data-driven, scalable, etc.) and mention it in feedback.${resumeText ? '\n6. Since you have my resume, ask questions that probe deeper into MY specific experiences rather than generic scenarios. Challenge me on gaps or transitions in my career.' : ''}`;
+5. Track whether I use B-school vocabulary (ROI, stakeholder, cross-functional, data-driven, scalable, etc.) and mention it in feedback.${resumeText ? '\n6. Since you have my resume, ask questions that probe deeper into MY specific experiences rather than generic scenarios. Challenge me on gaps or transitions in my career.' : ''}
+6. B-School Vocabulary Bonus: Track use of terms like ROI, stakeholder, cross-functional, data-driven, scalable, synergy, value proposition, competitive advantage, market penetration, and similar. Mention how many B-school terms the student used in the scorecard.
+7. Transitions: Between questions, provide a smooth transition. Don't just jump to the next question. E.g., "Great effort on that behavioral question. Now let's test your analytical thinking..."
+8. Scorecard Format: When generating the neevv Scorecard, use EXACTLY this format:
+   - Foundation: X/10 | Strength: ... | Gap: ...
+   - Logic: X/10 | Strength: ... | Gap: ...
+   - Communication: X/10 | Strength: ... | Gap: ...
+   - Overall: X/10
+   - Coach's Note: (2-3 sentences of personalized advice)
+9. Be encouraging but honest. If a student's answer is genuinely weak, say so diplomatically and explain why.
+10. Always end the interview with "[INTERVIEW_COMPLETE]" marker after generating the scorecard.
+11. For "Why this school?" — probe specifically about programs, faculty, or unique offerings of ${targetSchool}.
+12. For "Why now?" — probe the timing, career trajectory, and opportunity cost of pursuing MBA now.
+13. After the behavioral round, transition with "Let's switch gears to analytical thinking" before the guesstimate.`;
 
-      const response = await sendMessage(intro, '', userIdRef.current);
+      const coachMsgId = makeId();
+      setMessages([{ id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(intro, '', userIdRef.current, (partial) => {
+        setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+      });
       conversationIdRef.current = response.conversation_id;
       const coachText = response.answer;
       updateGuesstimatMode(coachText);
-      setMessages([{ id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() }]);
+      setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: coachText } : m));
     } catch (err) {
       console.error('Failed to start interview:', err);
       setError('Failed to connect to the neev Coach. Please try again.');
     } finally {
       setIsCoachTyping(false);
+      setIsStreaming(false);
     }
   }, [updateGuesstimatMode]);
 
@@ -488,6 +575,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: now, speechStats: stats };
     setMessages((prev) => [...prev, studentMsg]);
     setIsCoachTyping(true);
+    setIsStreaming(true);
     setError(null);
 
     try {
@@ -495,12 +583,16 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
         ? text + '\n\n[SYSTEM NOTE: This student\'s arithmetic has been validated by our math checker — all calculations check out.]'
         : text;
 
-      const response = await sendMessage(enhancedText, conversationIdRef.current, userIdRef.current);
+      const coachMsgId = makeId();
+      setMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(enhancedText, conversationIdRef.current, userIdRef.current, (partial) => {
+        setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+      });
       conversationIdRef.current = response.conversation_id;
       const coachText = response.answer;
+      setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: coachText } : m));
       updateGuesstimatMode(coachText);
-      const coachMsg: Message = { id: makeId(), role: 'coach', text: coachText, timestamp: Date.now() };
-      setMessages((prev) => [...prev, coachMsg]);
 
       const scoreResult = detectScorecard(coachText);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
@@ -513,27 +605,35 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       setError('Failed to get a response. Please try sending again.');
     } finally {
       setIsCoachTyping(false);
+      setIsStreaming(false);
     }
   }, [isCoachTyping, updateGuesstimatMode, profile, saveSessionToProgress]);
 
   const handleHint = useCallback(async () => {
     if (isCoachTyping || isHintLoading) return;
     setIsHintLoading(true);
+    setIsStreaming(true);
     setError(null);
 
     try {
-      const response = await sendMessage(
+      const coachMsgId = makeId();
+      setMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(
         '[HINT REQUEST] I\'m stuck. Give me a brief framework hint or nudge to get started — just the approach, NOT the full answer. Keep it to 2-3 bullet points max.',
-        conversationIdRef.current, userIdRef.current
+        conversationIdRef.current, userIdRef.current,
+        (partial) => {
+          setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Nudge:**\n\n' + partial } : m));
+        }
       );
       conversationIdRef.current = response.conversation_id;
-      const hintMsg: Message = { id: makeId(), role: 'coach', text: '💡 **Nudge:**\n\n' + response.answer, timestamp: Date.now() };
-      setMessages((prev) => [...prev, hintMsg]);
+      setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Nudge:**\n\n' + response.answer } : m));
     } catch (err) {
       console.error('Failed to get hint:', err);
       setError('Couldn\'t load a hint. Try again.');
     } finally {
       setIsHintLoading(false);
+      setIsStreaming(false);
     }
   }, [isCoachTyping, isHintLoading]);
 
@@ -584,39 +684,53 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     setPhase('interview');
     setMessages([]);
     setIsCoachTyping(true);
+    setIsStreaming(true);
     setError(null);
     setMathAlert(null);
-    setProfile(prev => prev || { name: 'Student', targetSchool: 'IIM A', background: 'Professional', email: '', resumeText: '' });
+    setProfile(prev => prev || { name: authUser?.name || 'Student', targetSchool: 'IIM A', background: 'Professional', email: authUser?.email || '', resumeText: '' });
 
     (async () => {
       try {
         const prompt = `The student wants to practice this specific question: "${question}"\n\nPlease present this question naturally as if you're the interview coach, then wait for their answer. Follow all the same coaching rules (STAR method for behavioral, step-by-step math for guesstimates, etc.)`;
-        const response = await sendMessage(prompt, '', userIdRef.current);
+
+        const coachMsgId = makeId();
+        setMessages([{ id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+        const response = await sendMessageStreaming(prompt, '', userIdRef.current, (partial) => {
+          setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+        });
         conversationIdRef.current = response.conversation_id;
         updateGuesstimatMode(response.answer);
-        setMessages([{ id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() }]);
+        setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
       } catch (err) {
         console.error('Failed to start practice:', err);
         setError('Failed to start practice. Please try again.');
       } finally {
         setIsCoachTyping(false);
+        setIsStreaming(false);
       }
     })();
-  }, [updateGuesstimatMode]);
+  }, [updateGuesstimatMode, authUser]);
 
   const handleRequestScorecard = useCallback(async () => {
     if (isCoachTyping) return;
     setIsCoachTyping(true);
+    setIsStreaming(true);
     setError(null);
 
     try {
-      const response = await sendMessage(
+      const coachMsgId = makeId();
+      setMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
+
+      const response = await sendMessageStreaming(
         'Please generate my neevv Scorecard now with scores for Foundation, Logic, and Communication (each out of 10), with specific strengths and critical gaps for each category. Include a final coach\'s note.',
-        conversationIdRef.current, userIdRef.current
+        conversationIdRef.current, userIdRef.current,
+        (partial) => {
+          setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
+        }
       );
       conversationIdRef.current = response.conversation_id;
-      const coachMsg: Message = { id: makeId(), role: 'coach', text: response.answer, timestamp: Date.now() };
-      setMessages((prev) => [...prev, coachMsg]);
+      setMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
 
       const scoreResult = detectScorecard(response.answer);
       if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
@@ -629,6 +743,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       setError('Failed to generate scorecard. Please try again.');
     } finally {
       setIsCoachTyping(false);
+      setIsStreaming(false);
     }
   }, [isCoachTyping, profile, saveSessionToProgress]);
 
@@ -651,10 +766,15 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
 
   // ═══════ RENDER ═══════
 
+  // Auth gate
+  if (!authUser) {
+    return <AuthScreen onLogin={handleLogin} />;
+  }
+
   if (page === 'landing') {
     return (
       <>
-        <Navbar currentPage="landing" onNavigate={handleNavigate} />
+        <Navbar currentPage="landing" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <LandingPage
           onStartInterview={() => handleNavigate('interview')}
           onGoToTools={() => handleNavigate('tools')}
@@ -667,7 +787,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'progress') {
     return (
       <>
-        <Navbar currentPage="progress" onNavigate={handleNavigate} />
+        <Navbar currentPage="progress" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <ProgressDashboard />
       </>
     );
@@ -676,7 +796,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'tools') {
     return (
       <>
-        <Navbar currentPage="tools" onNavigate={handleNavigate} />
+        <Navbar currentPage="tools" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <FreeTools
           onBack={handleBackToHome}
           onStartInterview={() => handleNavigate('interview')}
@@ -688,7 +808,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'questionbank') {
     return (
       <>
-        <Navbar currentPage="questionbank" onNavigate={handleNavigate} />
+        <Navbar currentPage="questionbank" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <QuestionBank onPractice={handlePracticeQuestion} />
       </>
     );
@@ -697,7 +817,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'dailypractice') {
     return (
       <>
-        <Navbar currentPage="dailypractice" onNavigate={handleNavigate} />
+        <Navbar currentPage="dailypractice" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <DailyPractice onPractice={handlePracticeQuestion} />
       </>
     );
@@ -706,7 +826,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'caselibrary') {
     return (
       <>
-        <Navbar currentPage="caselibrary" onNavigate={handleNavigate} />
+        <Navbar currentPage="caselibrary" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <CaseLibrary />
       </>
     );
@@ -715,7 +835,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'storybank') {
     return (
       <>
-        <Navbar currentPage="storybank" onNavigate={handleNavigate} />
+        <Navbar currentPage="storybank" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <StoryBank />
       </>
     );
@@ -724,7 +844,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'preferences') {
     return (
       <>
-        <Navbar currentPage="preferences" onNavigate={handleNavigate} />
+        <Navbar currentPage="preferences" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <Preferences />
       </>
     );
@@ -733,7 +853,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'upgrade') {
     return (
       <>
-        <Navbar currentPage="upgrade" onNavigate={handleNavigate} />
+        <Navbar currentPage="upgrade" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <UpgradePlan />
       </>
     );
@@ -742,7 +862,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'help') {
     return (
       <>
-        <Navbar currentPage="help" onNavigate={handleNavigate} />
+        <Navbar currentPage="help" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <GetHelp />
       </>
     );
@@ -753,7 +873,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'techquestionbank') {
     return (
       <>
-        <Navbar currentPage="techquestionbank" onNavigate={handleNavigate} />
+        <Navbar currentPage="techquestionbank" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <TechQuestionBank onPractice={handleTechPracticeQuestion} />
       </>
     );
@@ -762,7 +882,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'techinterview' && techPhase === 'setup') {
     return (
       <>
-        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <TechSetup onStart={handleTechStart} />
       </>
     );
@@ -771,7 +891,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'techinterview' && techPhase === 'scorecard' && techScorecardData && techProfile) {
     return (
       <>
-        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <TechScorecard
           studentName={techProfile.name}
           targetCompany={techProfile.company}
@@ -789,7 +909,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'techinterview' && techPhase === 'interview') {
     return (
       <>
-        <Navbar currentPage="techinterview" onNavigate={handleNavigate} />
+        <Navbar currentPage="techinterview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <TechChatInterface
           messages={techMessages}
           onSend={handleTechSend}
@@ -799,6 +919,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           questionNumber={Math.min(5, Math.floor(techMessages.length / 2))}
           error={techError}
           onRequestScorecard={handleTechRequestScorecard}
+          isStreaming={isTechStreaming}
         />
       </>
     );
@@ -809,7 +930,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'interview' && phase === 'setup') {
     return (
       <>
-        <Navbar currentPage="interview" onNavigate={handleNavigate} />
+        <Navbar currentPage="interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <SetupScreen onStart={handleStart} />
       </>
     );
@@ -818,7 +939,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   if (page === 'interview' && phase === 'scorecard' && scorecardData && profile) {
     return (
       <>
-        <Navbar currentPage="interview" onNavigate={handleNavigate} />
+        <Navbar currentPage="interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <Scorecard
           studentName={profile.name}
           targetSchool={profile.targetSchool}
@@ -849,6 +970,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       mathAlert={mathAlert}
       onFlagForMentor={handleFlagForMentor}
       mentorSent={mentorSent}
+      isStreaming={isStreaming}
     />
   );
 };

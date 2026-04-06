@@ -11,6 +11,8 @@ export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypr
 interface NavbarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
+  userName?: string;
+  onLogout?: () => void;
 }
 
 interface SidebarItem {
@@ -20,7 +22,7 @@ interface SidebarItem {
   dividerAfter?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userName, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const sidebarItems: SidebarItem[] = [
@@ -135,8 +137,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
           </button>
         </div>
 
+        {/* User Info */}
+        {userName && (
+          <div className="px-4 py-3 border-b border-base-300 mb-2">
+            <p className="text-sm font-medium text-base-content">{userName}</p>
+            <p className="text-xs text-base-content/50">Logged in</p>
+          </div>
+        )}
+
         {/* Sidebar Items */}
-        <div className="flex flex-col py-2 overflow-y-auto" style={{ height: 'calc(100% - 130px)' }}>
+        <div className="flex flex-col py-2 overflow-y-auto" style={{ height: userName ? 'calc(100% - 190px)' : 'calc(100% - 130px)' }}>
           {sidebarItems.map((item, idx) => (
             <React.Fragment key={idx}>
               <button
@@ -159,7 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
         <div className="absolute bottom-0 left-0 right-0 border-t border-base-300">
           <button
             className="flex items-center gap-3 px-5 py-3.5 text-left text-base-content/70 hover:bg-base-200 transition-colors w-full"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => { setSidebarOpen(false); onLogout?.(); }}
           >
             <LogOut size={20} className="opacity-80" />
             <span className="text-sm">Sign out</span>

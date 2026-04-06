@@ -15,6 +15,7 @@ interface ChatInterfaceProps {
   mathAlert: string | null;
   onFlagForMentor: (answer: string, question: string) => Promise<boolean | undefined>;
   mentorSent: boolean;
+  isStreaming?: boolean;
 }
 
 // Rotating "thinking" messages
@@ -367,7 +368,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
 };
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages, onSend, onHint, isCoachTyping, questionNumber, error, onRequestScorecard, speechSummary, isHintLoading, mathAlert, onFlagForMentor, mentorSent,
+  messages, onSend, onHint, isCoachTyping, questionNumber, error, onRequestScorecard, speechSummary, isHintLoading, mathAlert, onFlagForMentor, mentorSent, isStreaming = false,
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -658,6 +659,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   }`}
                 >
                   {msg.role === 'coach' ? renderMarkdown(mainText) : msg.text}
+                  {msg.role === 'coach' && isStreaming && msg.id === messages[messages.length - 1]?.id && msg.text && (
+                    <span className="inline-block w-1.5 h-4 bg-primary ml-0.5 animate-pulse rounded-sm" />
+                  )}
                 </div>
                 {/* Enhanced Answer Card (Revarta-style) */}
                 {enhanced && <EnhancedAnswerCard enhanced={enhanced} />}
@@ -685,7 +689,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
 
-        {isCoachTyping && (
+        {isCoachTyping && !isStreaming && (
           <div className="flex justify-start">
             <div className="bg-base-200 rounded-2xl rounded-bl-md px-4 py-3">
               <div className="flex items-center gap-3">
