@@ -3,7 +3,7 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket
+  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket, Sun, Moon
 } from 'lucide-react';
 
 export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle';
@@ -24,6 +24,21 @@ interface SidebarItem {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userName, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('neevv-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('neevv-theme', next);
+    // Update meta theme-color
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', next === 'dark' ? '#1d232a' : '#ffffff');
+  };
 
   const sidebarItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' },
@@ -94,14 +109,24 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
               </button>
             </div>
 
-            {/* Hamburger menu button */}
-            <button
-              className="btn btn-ghost btn-sm btn-square"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu size={22} />
-            </button>
+            {/* Theme toggle + Hamburger */}
+            <div className="flex items-center gap-1">
+              <button
+                className="btn btn-ghost btn-sm btn-square"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              >
+                {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+              </button>
+              <button
+                className="btn btn-ghost btn-sm btn-square"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu size={22} />
+              </button>
+            </div>
           </div>
         </div>
       </nav>

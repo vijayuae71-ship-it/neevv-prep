@@ -24,13 +24,20 @@ body {
   border-radius: 3px;
 }
 
-/* Glassmorphism cards */
+/* Glassmorphism cards — adapts to theme */
 .glass-card {
-  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 1rem;
+}
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .glass-card {
+  background: rgba(30, 30, 40, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* Animated gradient text */
@@ -92,14 +99,20 @@ body {
 .stagger-3 { animation-delay: 0.3s; }
 .stagger-4 { animation-delay: 0.4s; }
 
-/* Sticky navigation */
+/* Sticky navigation — adapts to theme */
 .sticky-nav {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: blur(12px);
+}
+[data-theme="light"] .sticky-nav {
   background: rgba(255, 255, 255, 0.85);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .sticky-nav {
+  background: rgba(30, 30, 40, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Stage progress bar */
