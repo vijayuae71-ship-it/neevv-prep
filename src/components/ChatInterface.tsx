@@ -238,18 +238,21 @@ const MathAlertBanner: React.FC<{ alert: string }> = ({ alert }) => (
   </div>
 );
 
-// 🎥 Video Recording Component
+// 🎥 Video Recording Component with Playback + Download
 const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel: () => void }> = ({ onComplete, onCancel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playbackRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [analyzing, setAnalyzing] = useState(false);
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [recordedDuration, setRecordedDuration] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<any>(null);
 
-  const startRecording = useCallback(async () => {
+  const startRecordingVideo = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
@@ -257,10 +260,17 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.onstop = () => analyzeRecording();
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setPlaybackUrl(url);
+        setRecordedDuration(30 - countdown);
+      };
       mediaRecorderRef.current = recorder;
       recorder.start(1000);
       setRecording(true);
@@ -269,7 +279,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
       timerRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            stopRecording();
+            stopRecordingVideo();
             return 0;
           }
           return prev - 1;
@@ -281,7 +291,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
     }
   }, []);
 
-  const stopRecording = useCallback(() => {
+  const stopRecordingVideo = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
@@ -292,33 +302,36 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
     setRecording(false);
   }, []);
 
-  const analyzeRecording = useCallback(() => {
-    setAnalyzing(true);
-    // Analyze the recording duration and generate feedback
-    const durationSecs = 30 - countdown;
-    const analysis = `🎥 **Video Response Analysis** (${durationSecs}s recording)\n\n` +
-      `✅ **What we observed:**\n` +
+  const handleDownload = useCallback(() => {
+    if (!playbackUrl) return;
+    const a = document.createElement('a');
+    a.href = playbackUrl;
+    a.download = `neevv-practice-${new Date().toISOString().slice(0, 10)}.webm`;
+    a.click();
+  }, [playbackUrl]);
+
+  const handleDone = useCallback(() => {
+    const durationSecs = recordedDuration || (30 - countdown);
+    const analysis = `🎥 **Video Practice Complete** (${durationSecs}s recording)\n\n` +
+      `✅ **Session Summary:**\n` +
       `- Recording duration: ${durationSecs} seconds\n` +
-      `- Camera presence: Active\n` +
-      `- Audio captured: Yes\n\n` +
+      `- Video saved locally — use the download button to keep it\n\n` +
       `💡 **Tips for video interviews:**\n` +
       `- Maintain eye contact with the camera (not the screen)\n` +
       `- Keep a neutral, professional background\n` +
       `- Speak at 120–160 WPM for optimal pacing\n` +
       `- Use hand gestures sparingly but effectively\n` +
       `- Pause before answering to collect your thoughts`;
-
-    setTimeout(() => {
-      setAnalyzing(false);
-      onComplete(analysis);
-    }, 1500);
-  }, [countdown, onComplete]);
+    if (playbackUrl) URL.revokeObjectURL(playbackUrl);
+    onComplete(analysis);
+  }, [countdown, recordedDuration, onComplete, playbackUrl]);
 
   useEffect(() => {
-    startRecording();
+    startRecordingVideo();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (playbackUrl) URL.revokeObjectURL(playbackUrl);
     };
   }, []);
 
@@ -328,7 +341,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-sm flex items-center gap-2">
             <Video size={16} className="text-error" />
-            {analyzing ? 'Analyzing...' : recording ? 'Recording' : 'Video Practice'}
+            {analyzing ? 'Analyzing...' : recording ? 'Recording' : playbackUrl ? 'Review Your Practice' : 'Video Practice'}
           </h3>
           {recording && (
             <div className="flex items-center gap-2">
@@ -342,7 +355,11 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
         </div>
 
         <div className="relative rounded-xl overflow-hidden bg-black aspect-video mb-3">
-          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+          {playbackUrl ? (
+            <video ref={playbackRef} src={playbackUrl} className="w-full h-full object-cover" controls playsInline />
+          ) : (
+            <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+          )}
           {analyzing && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
               <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -352,9 +369,18 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
 
         <div className="flex gap-2">
           {recording ? (
-            <button className="btn btn-error btn-sm flex-1 gap-1" onClick={stopRecording}>
+            <button className="btn btn-error btn-sm flex-1 gap-1" onClick={stopRecordingVideo}>
               <VideoOff size={14} /> Stop Recording
             </button>
+          ) : playbackUrl ? (
+            <>
+              <button className="btn btn-primary btn-sm flex-1 gap-1" onClick={handleDownload}>
+                ⬇️ Download
+              </button>
+              <button className="btn btn-secondary btn-sm flex-1 gap-1" onClick={handleDone}>
+                ✅ Done
+              </button>
+            </>
           ) : (
             <button className="btn btn-ghost btn-sm flex-1" onClick={onCancel}>
               Close
@@ -362,7 +388,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
           )}
         </div>
         <p className="text-xs text-base-content/40 mt-2 text-center">
-          Practice your on-camera presence · 30s max · Video stays local
+          Practice your on-camera presence · 30s max · Video stays local (never uploaded)
         </p>
       </div>
     </div>
@@ -381,6 +407,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   const [videoFeedback, setVideoFeedback] = useState<string | null>(null);
   const [flaggingMentor, setFlaggingMentor] = useState(false);
+  const [showTranscriptConfirm, setShowTranscriptConfirm] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(120);
@@ -436,6 +463,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             answerTimerRef.current = null;
             setTimerActive(false);
             setTimerExpired(true);
+            // Do NOT auto-submit — just show "time's up" banner
             return 0;
           }
           return prev - 1;
@@ -503,6 +531,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             setInput(prev => prev ? prev + ' ' + transcript : transcript);
             // Store duration for speech analytics
             (window as any).__lastVoiceDurationMs = durationMs;
+            // Show speech correction confirmation
+            setShowTranscriptConfirm(true);
           }
         } catch (err) {
           console.error('Deepgram stop error:', err);
@@ -788,6 +818,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Input area */}
       <div className="px-4 py-3 bg-base-200 border-t border-base-300">
+        {/* Speech Correction Protocol — confirm transcript before sending */}
+        {showTranscriptConfirm && input.trim() && (
+          <div className="mb-2 p-2 bg-info/10 border border-info/30 rounded-xl">
+            <div className="flex items-start gap-2">
+              <Mic size={14} className="text-info mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-info mb-1">🎤 Speech Correction — Review your transcript:</p>
+                <p className="text-xs text-base-content/70 italic">Edit any misheard words below, then tap Send ✓</p>
+              </div>
+              <button className="btn btn-ghost btn-xs" onClick={() => setShowTranscriptConfirm(false)}>✓ OK</button>
+            </div>
+          </div>
+        )}
+
         {isListening && (
           <div className="flex items-center gap-2 mb-2 px-2">
             <span className="relative flex h-3 w-3">

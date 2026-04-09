@@ -159,7 +159,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
                   <Copy className="w-3 h-3" />
                 )}
               </button>
-              <pre className="bg-neutral text-green-400 rounded-lg p-3 overflow-x-auto text-sm mt-1">
+              <pre className="bg-gray-100 text-gray-800 rounded-lg p-3 overflow-x-auto text-sm mt-1 border border-gray-200">
                 <code>{msg.text}</code>
               </pre>
             </div>
@@ -321,7 +321,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
           ) : (
             <textarea
               ref={textareaRef}
-              className="textarea flex-1 resize-none font-mono text-sm bg-neutral text-green-400 border-neutral-focus placeholder-green-700"
+              className="textarea flex-1 resize-none font-mono text-sm bg-gray-50 text-gray-800 border-gray-300 placeholder-gray-400"
               rows={5}
               placeholder={`Write your ${language} code here... (Ctrl+Enter to send)`}
               value={input}

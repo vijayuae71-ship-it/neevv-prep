@@ -180,6 +180,30 @@ const App: React.FC = () => {
 
   const speechSummary = useMemo(() => computeSummary(messages), [messages]);
 
+  // Auto-save progress every 3 student turns
+  const lastAutoSaveCount = useRef<number>(0);
+  React.useEffect(() => {
+    const studentCount = messages.filter(m => m.role === 'student').length;
+    if (studentCount > 0 && studentCount % 3 === 0 && studentCount !== lastAutoSaveCount.current) {
+      lastAutoSaveCount.current = studentCount;
+      const partialRecord = {
+        id: 'partial-' + Date.now().toString(36),
+        date: new Date().toISOString().slice(0, 10),
+        type: 'mba' as const,
+        overallScore: 0,
+        categories: [],
+        targetSchool: profile?.targetSchool,
+        partial: true,
+        questionCount: studentCount,
+      };
+      const existing = getJSON<any[]>('neevv_progress', []);
+      // Remove previous partial for this session
+      const filtered = existing.filter((r: any) => !r.partial);
+      filtered.push(partialRecord);
+      setJSON('neevv_progress', filtered);
+    }
+  }, [messages, profile]);
+
   const updateGuesstimatMode = useCallback((coachText: string) => {
     const lower = coachText.toLowerCase();
     if (lower.includes('guesstimate') || lower.includes('estimate') || lower.includes('market size') ||
@@ -653,7 +677,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
         `---\n\n` +
         `Please reply with your personal tip or advice.`
       );
-      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+      window.open(`mailto:vijayuae71@gmail.com?subject=${subject}&body=${body}`, '_blank');
       setMentorSent(true);
       setTimeout(() => setMentorSent(false), 60000);
       return true;
@@ -973,21 +997,24 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
 
   // Interview chat
   return (
-    <ChatInterface
-      messages={messages}
-      onSend={handleSend}
-      onHint={handleHint}
-      isCoachTyping={isCoachTyping}
-      isHintLoading={isHintLoading}
-      questionNumber={estimateQuestion(messages.length)}
-      error={error}
-      onRequestScorecard={handleRequestScorecard}
-      speechSummary={speechSummary}
-      mathAlert={mathAlert}
-      onFlagForMentor={handleFlagForMentor}
-      mentorSent={mentorSent}
-      isStreaming={isStreaming}
-    />
+    <>
+      <Navbar currentPage="interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
+      <ChatInterface
+        messages={messages}
+        onSend={handleSend}
+        onHint={handleHint}
+        isCoachTyping={isCoachTyping}
+        isHintLoading={isHintLoading}
+        questionNumber={estimateQuestion(messages.length)}
+        error={error}
+        onRequestScorecard={handleRequestScorecard}
+        speechSummary={speechSummary}
+        mathAlert={mathAlert}
+        onFlagForMentor={handleFlagForMentor}
+        mentorSent={mentorSent}
+        isStreaming={isStreaming}
+      />
+    </>
   );
 };
 

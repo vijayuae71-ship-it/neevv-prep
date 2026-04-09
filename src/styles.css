@@ -26,10 +26,11 @@ body {
 
 /* Glassmorphism cards */
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 1rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 /* Animated gradient text */
@@ -97,8 +98,8 @@ body {
   top: 0;
   z-index: 50;
   backdrop-filter: blur(12px);
-  background: rgba(var(--b1), 0.85);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Stage progress bar */
