@@ -5,7 +5,7 @@ import { sendMessage } from '../utils/difyApi';
 import { parseLinkedInPDF } from '../utils/linkedinParser';
 import type { NeevScore } from '../types';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 interface ResumeAuditProps {
   onComplete: (score: NeevScore, resumeText: string, skills: string[], profileData: { name: string; email: string; college: string; major: string; skills: string[]; targetJob: string; location: string }) => void;
