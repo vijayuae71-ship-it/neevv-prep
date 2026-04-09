@@ -157,10 +157,10 @@ export const CaseLibrary: React.FC = () => {
 
         {/* Tab Selector */}
         <div className="flex gap-2 mb-4">
-          <button className={`btn btn-sm ${tab === 'frameworks' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTab('frameworks')}>
+          <button className={`btn btn-sm ${tab === 'frameworks' ? 'btn-outline btn-primary' : 'btn-ghost'}`} onClick={() => setTab('frameworks')}>
             📐 Frameworks ({FRAMEWORKS.length})
           </button>
-          <button className={`btn btn-sm ${tab === 'cases' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTab('cases')}>
+          <button className={`btn btn-sm ${tab === 'cases' ? 'btn-outline btn-primary' : 'btn-ghost'}`} onClick={() => setTab('cases')}>
             📋 Case Studies ({CASE_STUDIES.length})
           </button>
         </div>

@@ -141,7 +141,7 @@ export const DailyPractice: React.FC<DailyPracticeProps> = ({ onPractice }) => {
 
             <div className="flex gap-2 flex-wrap">
               <button
-                className="btn btn-primary btn-sm gap-1"
+                className="btn btn-outline btn-primary btn-sm gap-1"
                 onClick={() => onPractice(todayQ.q)}
               >
                 <Play size={14} /> Practice with neev Coach

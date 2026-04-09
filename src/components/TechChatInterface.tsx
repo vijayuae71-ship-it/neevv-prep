@@ -364,19 +364,19 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
       <div className="bg-base-100 border-t border-base-300 p-4">
         {/* Mode Tabs */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="tabs tabs-boxed tabs-sm bg-base-200">
+          <div className="flex gap-1">
             <button
-              className={`tab ${mode === 'text' ? 'tab-active' : ''}`}
+              className={`btn btn-sm gap-1 ${mode === 'text' ? 'btn-outline btn-primary' : 'btn-ghost'}`}
               onClick={() => setMode('text')}
             >
-              <Layout className="w-3 h-3 mr-1" />
+              <Layout className="w-3 h-3" />
               Text Answer
             </button>
             <button
-              className={`tab ${mode === 'code' ? 'tab-active' : ''}`}
+              className={`btn btn-sm gap-1 ${mode === 'code' ? 'btn-outline btn-primary' : 'btn-ghost'}`}
               onClick={() => setMode('code')}
             >
-              <Code2 className="w-3 h-3 mr-1" />
+              <Code2 className="w-3 h-3" />
               Code Answer
             </button>
           </div>

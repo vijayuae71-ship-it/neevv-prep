@@ -133,7 +133,7 @@ export const QuestionBank: React.FC<QuestionBankProps> = ({ onPractice }) => {
         {/* Category Tabs */}
         <div className="flex gap-2 flex-wrap mb-6">
           <button
-            className={`btn btn-sm ${categoryFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+            className={`btn btn-sm ${categoryFilter === 'all' ? 'btn-outline btn-primary' : 'btn-ghost'}`}
             onClick={() => setCategoryFilter('all')}
           >
             All ({counts.all})
@@ -141,7 +141,7 @@ export const QuestionBank: React.FC<QuestionBankProps> = ({ onPractice }) => {
           {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => (
             <button
               key={key}
-              className={`btn btn-sm gap-1 ${categoryFilter === key ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-sm gap-1 ${categoryFilter === key ? 'btn-outline btn-primary' : 'btn-ghost'}`}
               onClick={() => setCategoryFilter(key)}
             >
               {cfg.icon} {cfg.label} ({counts[key as keyof typeof counts]})
@@ -181,7 +181,7 @@ export const QuestionBank: React.FC<QuestionBankProps> = ({ onPractice }) => {
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
                       <button
-                        className="btn btn-primary btn-sm gap-1"
+                        className="btn btn-outline btn-primary btn-sm gap-1"
                         onClick={() => onPractice(q.title)}
                       >
                         <Play size={14} /> Practice

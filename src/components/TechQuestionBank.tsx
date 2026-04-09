@@ -137,11 +137,11 @@ export const TechQuestionBank: React.FC<TechQuestionBankProps> = ({ onPractice }
         </div>
 
         {/* Category Tabs */}
-        <div className="tabs tabs-boxed bg-base-100 mb-6 flex-wrap justify-center p-2">
+        <div className="flex gap-2 flex-wrap justify-center mb-6">
           {categories.map((cat) => (
             <button
               key={cat}
-              className={`tab gap-1 ${activeCategory === cat ? 'tab-active' : ''}`}
+              className={`btn btn-sm gap-1 ${activeCategory === cat ? 'btn-outline btn-primary' : 'btn-ghost'}`}
               onClick={() => setActiveCategory(cat)}
             >
               {cat !== 'All' && categoryIcons[cat]}
@@ -177,7 +177,7 @@ export const TechQuestionBank: React.FC<TechQuestionBankProps> = ({ onPractice }
                   <p className="text-base-content font-medium">{q.question}</p>
                 </div>
                 <button
-                  className="btn btn-primary btn-sm gap-1 shrink-0"
+                  className="btn btn-outline btn-primary btn-sm gap-1 shrink-0"
                   onClick={() => onPractice(q.question)}
                 >
                   Practice This
