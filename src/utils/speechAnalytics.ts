@@ -17,6 +17,7 @@ const FILLER_PATTERNS: RegExp[] = [
 
 // B-school vocabulary to track (Google Warmup-inspired)
 const BSCHOOL_TERMS = [
+  // Core business terms
   'roi', 'return on investment', 'leadership', 'stakeholder', 'cross-functional',
   'strategic', 'scalable', 'value proposition', 'competitive advantage', 'market sizing',
   'top-down', 'bottom-up', 'segmentation', 'framework', 'hypothesis', 'data-driven',
@@ -24,6 +25,21 @@ const BSCHOOL_TERMS = [
   'collaboration', 'innovation', 'transformation', 'entrepreneurial', 'quantifiable',
   'metrics', 'pipeline', 'synergy', 'disruptive', 'pivot', 'global perspective',
   'networking', 'thought leadership', 'value creation', 'due diligence',
+  // Exams & programs
+  'gmat', 'gre', 'mba', 'pgdm',
+  // Top B-schools
+  'iim', 'isb', 'xlri', 'fms', 'mdi',
+  // Academic & campus
+  'case study', 'cohort', 'pedagogy', 'peer learning', 'campus placement', 'alumni',
+  // Career tracks
+  'entrepreneurship', 'consulting', 'investment banking', 'product management',
+  // Interview & soft skills
+  'star method', 'elevator pitch', 'diversity', 'inclusion',
+  // Strategy & frameworks
+  'market share', 'swot', 'porter', 'bcg matrix', 'ansoff',
+  'profitability', 'break-even', 'unit economics', 'ltv', 'cac',
+  'supply chain', 'operations', 'go-to-market', 'pricing strategy',
+  'brand equity', 'customer acquisition', 'retention',
 ];
 
 export function analyzeSpeech(text: string, durationMs: number): SpeechStats {
@@ -45,11 +61,10 @@ export function analyzeSpeech(text: string, durationMs: number): SpeechStats {
   const durationMin = Math.max(durationMs / 60000, 0.1); // min 6 seconds
   const wordsPerMinute = Math.round(wordCount / durationMin);
 
-  // Detect B-school terms
-  const bschoolTermsList = ['roi', 'stakeholder', 'cross-functional', 'data-driven', 'scalable', 'synergy', 'leverage', 'value proposition', 'market share', 'competitive advantage', 'kpi', 'growth', 'strategy', 'pivot'];
+  // Detect B-school terms — reuse the main BSCHOOL_TERMS list
   const bschoolTerms: string[] = [];
   const lowerText = text.toLowerCase();
-  for (const term of bschoolTermsList) {
+  for (const term of BSCHOOL_TERMS) {
     if (lowerText.includes(term) && !bschoolTerms.includes(term)) {
       bschoolTerms.push(term);
     }

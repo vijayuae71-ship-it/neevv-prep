@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
   Loader2,
@@ -10,7 +10,10 @@ import {
   AlertTriangle,
   Layout,
   Timer,
+  Mic,
+  MicOff,
 } from 'lucide-react';
+import { isDeepgramAvailable, startRecording, stopRecording, cancelRecording, hasActiveRecording, getRecordingDuration } from '../utils/deepgramSTT';
 
 interface Message {
   id: string;
@@ -56,9 +59,12 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
   const [timerSeconds, setTimerSeconds] = useState(120);
   const [timerActive, setTimerActive] = useState(false);
   const [timerExpired, setTimerExpired] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [pendingTranscript, setPendingTranscript] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const answerTimerRef = useRef<any>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,6 +111,69 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
+
+  const isVoiceSupported = (): boolean => {
+    return isDeepgramAvailable() || !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
+  };
+
+  const toggleVoice = useCallback(async () => {
+    if (isListening) {
+      // Stop recording
+      setIsListening(false);
+      if (hasActiveRecording()) {
+        try {
+          const { transcript } = await stopRecording();
+          if (transcript) {
+            setPendingTranscript(transcript);
+          }
+        } catch (err) {
+          console.error('Deepgram stop error:', err);
+        }
+      } else if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      return;
+    }
+
+    // Try Deepgram first
+    if (isDeepgramAvailable()) {
+      try {
+        await startRecording();
+        setIsListening(true);
+        return;
+      } catch (err) {
+        console.warn('Deepgram start failed, falling back to Web Speech API:', err);
+      }
+    }
+
+    // Fallback to Web Speech API
+    if (!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true; recognition.interimResults = false; recognition.lang = 'en-US';
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      let finalT = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalT += event.results[i][0].transcript + ' ';
+      }
+      if (finalT.trim()) {
+        setPendingTranscript(finalT.trim());
+      }
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [isListening]);
+
+  // Cleanup voice on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.abort();
+      cancelRecording();
+    };
+  }, []);
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -231,6 +300,43 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
         </div>
       )}
 
+      {/* Voice Transcript Confirmation */}
+      {pendingTranscript !== null && (
+        <div className="alert alert-info mx-4 mt-2 shadow-sm">
+          <Mic className="w-4 h-4 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold mb-1">🎤 Review your transcript:</p>
+            <textarea
+              className="textarea textarea-bordered textarea-sm w-full"
+              rows={2}
+              value={pendingTranscript}
+              onChange={(e) => setPendingTranscript(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-1">
+            <button className="btn btn-success btn-xs" onClick={() => {
+              if (pendingTranscript.trim()) {
+                const sendText = mode === 'code' ? `\`\`\`${language}\n${pendingTranscript}\n\`\`\`` : pendingTranscript;
+                onSend(sendText);
+              }
+              setPendingTranscript(null);
+            }}>✓ Send</button>
+            <button className="btn btn-ghost btn-xs" onClick={() => setPendingTranscript(null)}>✗</button>
+          </div>
+        </div>
+      )}
+
+      {/* Listening indicator */}
+      {isListening && (
+        <div className="flex items-center gap-2 mx-4 mt-2 px-2">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+          </span>
+          <span className="text-xs text-error font-medium">Listening... Speak your answer</span>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
         {messages.map(renderMessage)}
@@ -340,6 +446,16 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
             >
               <Send className="w-5 h-5" />
             </button>
+            {isVoiceSupported() && (
+              <button
+                className={`btn ${isListening ? 'btn-error animate-pulse' : 'btn-ghost'} flex-1`}
+                onClick={toggleVoice}
+                disabled={isCoachTyping}
+                title={isListening ? 'Stop recording' : 'Start voice input (Deepgram AI)'}
+              >
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+            )}
           </div>
         </div>
 
