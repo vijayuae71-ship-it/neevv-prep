@@ -17,6 +17,7 @@ import { TechChatInterface } from './components/TechChatInterface';
 import { TechQuestionBank } from './components/TechQuestionBank';
 import { TechScorecard } from './components/TechScorecard';
 import { ProgressDashboard } from './components/ProgressDashboard';
+import { LifecycleOrchestrator } from './components/LifecycleOrchestrator';
 import { AuthScreen } from './components/AuthScreen';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
 import { sendMessage, sendMessageStreaming } from './utils/difyApi';
@@ -779,6 +780,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onStartInterview={() => handleNavigate('interview')}
           onGoToTools={() => handleNavigate('tools')}
           onStartTechInterview={() => handleNavigate('techinterview')}
+          onStartLifecycle={() => handleNavigate('lifecycle')}
         />
       </>
     );
@@ -789,6 +791,20 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
       <>
         <Navbar currentPage="progress" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
         <ProgressDashboard />
+      </>
+    );
+  }
+
+  if (page === 'lifecycle') {
+    return (
+      <>
+        <Navbar currentPage="lifecycle" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
+        <LifecycleOrchestrator
+          userName={authUser.name}
+          userEmail={authUser.email}
+          onGoToInterview={() => handleNavigate('interview')}
+          onGoHome={() => handleNavigate('landing')}
+        />
       </>
     );
   }

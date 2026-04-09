@@ -3,10 +3,10 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut, Code2, Terminal, BarChart3
+  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket
 } from 'lucide-react';
 
-export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress';
+export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle';
 
 interface NavbarProps {
   currentPage: Page;
@@ -27,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
 
   const sidebarItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' },
+    { icon: <Rocket size={20} />, label: '🚀 Career Lifecycle', page: 'lifecycle' },
     { icon: <LayoutDashboard size={20} />, label: 'Interview Hub', page: 'interview' },
     { icon: <Target size={20} />, label: 'Question Bank', page: 'questionbank' },
     { icon: <CalendarCheck size={20} />, label: 'Daily Practice', page: 'dailypractice' },
@@ -49,6 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
 
   const desktopLinks: { label: string; page: Page }[] = [
     { label: 'Home', page: 'landing' },
+    { label: 'Career Lifecycle', page: 'lifecycle' },
     { label: 'Progress', page: 'progress' },
     { label: 'Free Tools', page: 'tools' },
   ];

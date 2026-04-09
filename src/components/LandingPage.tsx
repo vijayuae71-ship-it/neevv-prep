@@ -9,6 +9,7 @@ interface LandingPageProps {
   onStartInterview: () => void;
   onGoToTools: () => void;
   onStartTechInterview?: () => void;
+  onStartLifecycle?: () => void;
 }
 
 // Animated counter
@@ -48,7 +49,7 @@ const FAQItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
   );
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview, onStartLifecycle }) => {
   return (
     <div className="min-h-screen bg-base-100">
       {/* ═══════ HERO ═══════ */}
@@ -88,6 +89,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
             {onStartTechInterview && (
               <button className="btn btn-secondary btn-lg gap-2 shadow-lg shadow-secondary/25 hover:shadow-secondary/40 transition-shadow" onClick={onStartTechInterview}>
                 🖥️ Tech Interview <ArrowRight size={20} />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4 animate-slideUp">
+            {onStartLifecycle && (
+              <button className="btn btn-accent btn-lg gap-2 shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow" onClick={onStartLifecycle}>
+                🚀 Career Lifecycle <ArrowRight size={20} />
               </button>
             )}
           </div>
@@ -140,32 +148,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
       <section className="max-w-5xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-base-content mb-3">How It Works</h2>
-          <p className="text-base-content/50">Three simple steps to interview mastery</p>
+          <p className="text-base-content/50">Four steps from resume to offer</p>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
               step: '01',
               icon: <FileText size={28} />,
-              title: 'Set Up Your Profile',
-              desc: 'Enter your name, target B-school, background, and optionally upload your resume for personalized questions.',
+              title: 'Resume Audit',
+              desc: 'Upload your resume for a Neev Score (0-100). Get VP-level feedback on metrics, structure, and keywords.',
               color: 'text-primary',
               bg: 'bg-primary/10',
             },
             {
               step: '02',
+              icon: <Target size={28} />,
+              title: 'Job Discovery',
+              desc: 'AI-powered job matching from LinkedIn & Naukri. See your skills vs market demand with match scores.',
+              color: 'text-warning',
+              bg: 'bg-warning/10',
+            },
+            {
+              step: '03',
               icon: <MessageSquare size={28} />,
-              title: '5-Question Mock Interview',
-              desc: '2 behavioral (STAR enforced) + 1 guesstimate (with data exhibit & math validation) + 2 "Why" questions.',
+              title: 'Application Kit',
+              desc: 'VP-crafted cover letter, LinkedIn connect note, and ATS keyword hack — tailored to each job.',
               color: 'text-secondary',
               bg: 'bg-secondary/10',
             },
             {
-              step: '03',
+              step: '04',
               icon: <BarChart3 size={28} />,
-              title: 'Get Your neevv Scorecard',
-              desc: 'Scored on Foundation, Logic & Communication with speech analytics, B-school terms, and an enhanced answer for every response.',
+              title: 'Mock Interview',
+              desc: '5-question AI interview with STAR enforcement, math validation, and a comprehensive scorecard.',
               color: 'text-accent',
               bg: 'bg-accent/10',
             },
