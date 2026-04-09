@@ -18,6 +18,7 @@ interface TechScorecardProps {
   onRestart: () => void;
   onEmailScorecard?: () => Promise<boolean> | void;
   studentEmail?: string;
+  onBack?: () => void;
 }
 
 const getScoreColor = (score: number): string => {
@@ -47,6 +48,7 @@ export const TechScorecard: React.FC<TechScorecardProps> = ({
   onRestart,
   onEmailScorecard,
   studentEmail,
+  onBack,
 }) => {
   const circumference = 2 * Math.PI * 54;
   const strokeDashoffset = circumference - (overallScore / 10) * circumference;
@@ -189,10 +191,10 @@ export const TechScorecard: React.FC<TechScorecardProps> = ({
             <RotateCcw className="w-5 h-5" />
             Practice Again
           </button>
-          <a href="/" className="btn btn-ghost gap-2">
+          <button className="btn btn-ghost gap-2" onClick={onBack || (() => window.location.href = '/')}>
             <Home className="w-5 h-5" />
             Back to Home
-          </a>
+          </button>
         </div>
       </div>
     </div>

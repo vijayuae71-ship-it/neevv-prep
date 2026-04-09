@@ -34,6 +34,7 @@ interface TechChatInterfaceProps {
   error: string | null;
   onRequestScorecard: () => void;
   isStreaming?: boolean;
+  onBack?: () => void;
 }
 
 const TOTAL_QUESTIONS = 5;
@@ -50,6 +51,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
   error,
   onRequestScorecard,
   isStreaming = false,
+  onBack,
 }) => {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'text' | 'code'>('text');
@@ -210,7 +212,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
         </div>
         <div
           className={`chat-bubble max-w-[85%] ${
-            isCoach ? 'chat-bubble-primary' : 'chat-bubble-neutral'
+            isCoach ? 'bg-base-200 text-base-content' : 'bg-primary text-primary-content'
           }`}
         >
           {msg.isCode ? (
@@ -250,6 +252,11 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
       {/* Header */}
       <div className="navbar bg-base-100 shadow-md px-4">
         <div className="flex-1 gap-2">
+          {onBack && (
+            <button className="btn btn-ghost btn-sm" onClick={onBack}>
+              ← Back
+            </button>
+          )}
           <Terminal className="w-6 h-6 text-primary" />
           <span className="font-bold text-lg bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             neevv Tech
@@ -351,7 +358,7 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
         {isCoachTyping && !isStreaming && (
           <div className="chat chat-start">
             <div className="chat-header text-xs opacity-70 mb-1">🤖 Tech Coach</div>
-            <div className="chat-bubble chat-bubble-primary">
+            <div className="chat-bubble bg-base-200 text-base-content">
               <span className="loading loading-dots loading-sm"></span>
             </div>
           </div>

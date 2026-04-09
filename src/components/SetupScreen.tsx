@@ -4,9 +4,10 @@ import { parseLinkedInPDF } from '../utils/linkedinParser';
 
 interface SetupScreenProps {
   onStart: (name: string, targetSchool: string, background: string, email: string, resumeText: string) => void;
+  onBack?: () => void;
 }
 
-export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
+export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart, onBack }) => {
   const [name, setName] = useState('');
   const [targetSchool, setTargetSchool] = useState('');
   const [background, setBackground] = useState('');
@@ -76,6 +77,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
     <div className="bg-base-100 flex items-center justify-center p-4 py-10">
       <div className="card bg-base-200 shadow-xl w-full max-w-lg">
         <div className="card-body gap-6">
+          {onBack && (
+            <button className="btn btn-ghost btn-sm self-start" onClick={onBack}>
+              ← Back
+            </button>
+          )}
           <div className="text-center space-y-2">
             <div className="flex justify-center">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">

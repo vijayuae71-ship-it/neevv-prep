@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen, FileDown } from 'lucide-react';
+import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen, FileDown, Home } from 'lucide-react';
 import { ScoreEntry, SpeechAnalyticsSummary } from '../types';
 import { exportMBAScorecardPDF } from '../utils/pdfExport';
 
@@ -13,6 +13,7 @@ interface ScorecardProps {
   onRestart: () => void;
   onEmailScorecard?: () => Promise<boolean>;
   speechSummary: SpeechAnalyticsSummary;
+  onBack?: () => void;
 }
 
 const getScoreColor = (score: number): string => {
@@ -28,7 +29,7 @@ const getScoreEmoji = (score: number): string => {
 };
 
 export const Scorecard: React.FC<ScorecardProps> = ({
-  studentName, targetSchool, scores, overallScore, coachNote, studentEmail, onRestart, onEmailScorecard, speechSummary,
+  studentName, targetSchool, scores, overallScore, coachNote, studentEmail, onRestart, onEmailScorecard, speechSummary, onBack,
 }) => {
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [autoSent, setAutoSent] = useState(false);
@@ -200,6 +201,11 @@ export const Scorecard: React.FC<ScorecardProps> = ({
 
         {/* Actions */}
         <div className="flex justify-center gap-3 flex-wrap">
+          {onBack && (
+            <button className="btn btn-secondary gap-2" onClick={onBack}>
+              <Home size={16} /> Back to Home
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onRestart}>
             <RotateCcw size={16} /> New Interview
           </button>

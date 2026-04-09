@@ -3,6 +3,7 @@ import { Code2, ChevronRight, Terminal, Database, Cpu } from 'lucide-react';
 
 interface TechSetupProps {
   onStart: (name: string, company: string, level: string, techStack: string[], email: string) => void;
+  onBack?: () => void;
 }
 
 const experienceLevels = ['Fresher', '1-2 years', '3-5 years', '5+ years'];
@@ -16,7 +17,7 @@ const techStackOptions = [
   { label: 'Data Structures & Algorithms', icon: '🧮' },
 ];
 
-export const TechSetup: React.FC<TechSetupProps> = ({ onStart }) => {
+export const TechSetup: React.FC<TechSetupProps> = ({ onStart, onBack }) => {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [level, setLevel] = useState('');
@@ -42,6 +43,11 @@ export const TechSetup: React.FC<TechSetupProps> = ({ onStart }) => {
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
       <div className="card bg-base-100 shadow-2xl w-full max-w-lg">
         <div className="card-body">
+          {onBack && (
+            <button className="btn btn-ghost btn-sm self-start" onClick={onBack}>
+              ← Back
+            </button>
+          )}
           {/* Header */}
           <div className="text-center mb-4">
             <div className="flex items-center justify-center gap-2 mb-2">

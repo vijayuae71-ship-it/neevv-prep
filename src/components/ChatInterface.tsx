@@ -17,6 +17,7 @@ interface ChatInterfaceProps {
   onFlagForMentor: (answer: string, question: string) => Promise<boolean | undefined>;
   mentorSent: boolean;
   isStreaming?: boolean;
+  onBack?: () => void;
 }
 
 // Rotating "thinking" messages
@@ -396,7 +397,7 @@ const VideoRecorder: React.FC<{ onComplete: (analysis: string) => void; onCancel
 };
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages, onSend, onHint, isCoachTyping, questionNumber, error, onRequestScorecard, speechSummary, isHintLoading, mathAlert, onFlagForMentor, mentorSent, isStreaming = false,
+  messages, onSend, onHint, isCoachTyping, questionNumber, error, onRequestScorecard, speechSummary, isHintLoading, mathAlert, onFlagForMentor, mentorSent, isStreaming = false, onBack,
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -645,6 +646,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       {/* Header */}
       <div className="px-4 py-3 bg-base-200 border-b border-base-300 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {onBack && (
+            <button className="btn btn-ghost btn-sm" onClick={onBack}>
+              ← Back
+            </button>
+          )}
           <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-primary font-bold text-sm">nP</span>
           </div>

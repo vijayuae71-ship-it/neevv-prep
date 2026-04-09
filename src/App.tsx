@@ -923,7 +923,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     return (
       <>
         <Navbar currentPage="techinterview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <TechSetup onStart={handleTechStart} />
+        <TechSetup onStart={handleTechStart} onBack={handleBackToHome} />
       </>
     );
   }
@@ -941,6 +941,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           studentEmail={techProfile.email}
           onRestart={handleTechRestart}
           onEmailScorecard={techProfile.email ? handleTechEmailScorecard : undefined}
+          onBack={handleBackToHome}
         />
       </>
     );
@@ -960,6 +961,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           error={techError}
           onRequestScorecard={handleTechRequestScorecard}
           isStreaming={isTechStreaming}
+          onBack={handleBackToHome}
         />
       </>
     );
@@ -971,7 +973,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     return (
       <>
         <Navbar currentPage="interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <SetupScreen onStart={handleStart} />
+        <SetupScreen onStart={handleStart} onBack={handleBackToHome} />
       </>
     );
   }
@@ -990,6 +992,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onRestart={handleRestart}
           onEmailScorecard={profile.email ? handleEmailScorecard : undefined}
           speechSummary={speechSummary}
+          onBack={handleBackToHome}
         />
       </>
     );
@@ -1013,6 +1016,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
         onFlagForMentor={handleFlagForMentor}
         mentorSent={mentorSent}
         isStreaming={isStreaming}
+        onBack={handleBackToHome}
       />
     </>
   );
