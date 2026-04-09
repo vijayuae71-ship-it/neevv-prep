@@ -82,26 +82,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
             Get scored on Foundation, Logic & Communication — with real-time speech analytics.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4 animate-slideUp">
-            <button className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" onClick={onStartInterview}>
+          <div className="flex flex-col items-center justify-center gap-3 mb-8 animate-slideUp w-full max-w-sm mx-auto">
+            <button className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow w-full" onClick={onStartInterview}>
               MBA Mock Interview <ArrowRight size={20} />
             </button>
             {onStartTechInterview && (
-              <button className="btn btn-secondary btn-lg gap-2 shadow-lg shadow-secondary/25 hover:shadow-secondary/40 transition-shadow" onClick={onStartTechInterview}>
+              <button className="btn btn-secondary btn-lg gap-2 shadow-lg shadow-secondary/25 hover:shadow-secondary/40 transition-shadow w-full" onClick={onStartTechInterview}>
                 🖥️ Tech Interview <ArrowRight size={20} />
               </button>
             )}
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4 animate-slideUp">
             {onStartLifecycle && (
-              <button className="btn btn-accent btn-lg gap-2 shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow" onClick={onStartLifecycle}>
+              <button className="btn btn-accent btn-lg gap-2 shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow w-full" onClick={onStartLifecycle}>
                 🚀 Career Lifecycle <ArrowRight size={20} />
               </button>
             )}
-          </div>
-          <div className="flex items-center justify-center gap-3 mb-8 animate-slideUp">
-            <button className="btn btn-outline btn-md gap-2" onClick={onGoToTools}>
-              Explore Free Tools
+            <button className="btn btn-ghost btn-lg gap-2 border border-base-300 hover:border-primary/30 w-full" onClick={onGoToTools}>
+              🛠️ Explore Free Tools <ArrowRight size={20} />
             </button>
           </div>
 
