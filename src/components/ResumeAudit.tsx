@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { FileText, Upload, CheckCircle, AlertTriangle, ArrowRight, User, GraduationCap, Briefcase, MapPin, X, Loader2, Sparkles, Target, BarChart3, Key } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
 import { sendMessage } from '../utils/difyApi';
 import type { NeevScore } from '../types';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
 interface ResumeAuditProps {
   onComplete: (score: NeevScore, resumeText: string, skills: string[], profileData: { name: string; email: string; college: string; major: string; skills: string[]; targetJob: string; location: string }) => void;
@@ -59,20 +62,43 @@ export const ResumeAudit: React.FC<ResumeAuditProps> = ({ onComplete, initialNam
     topSkills: string[]; criticalGaps: string[]; rewrittenBullets: string[];
   } | null>(null);
 
+  const [extracting, setExtracting] = useState(false);
+
   const [manual, setManual] = useState<ManualProfile>({
     college: '', major: '', skills: '', targetJob: '', location: '',
   });
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result;
-      if (typeof text === 'string') setResumeText(text);
-    };
-    reader.readAsText(file);
+    setError('');
+
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      try {
+        setExtracting(true);
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map((item: any) => item.str).join(' ') + '\n';
+        }
+        setResumeText(text.trim());
+      } catch (err) {
+        setError('Failed to extract text from PDF. Please try pasting your resume text instead.');
+      } finally {
+        setExtracting(false);
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result;
+        if (typeof text === 'string') setResumeText(text);
+      };
+      reader.readAsText(file);
+    }
   }, []);
 
   const analyzeResume = useCallback(async (text: string) => {
@@ -116,7 +142,11 @@ Be strict. Only give scores above 85 for truly exceptional resumes with clear me
       setNeevResult(parsed);
       setMode('results');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
+      const errMsg = err instanceof Error ? err.message : 'Analysis failed. Please try again.';
+      if (errMsg.includes('404') || errMsg.toLowerCase().includes('not exist')) {
+        setConversationId('');
+      }
+      setError(errMsg);
       setMode('upload');
     }
   }, [conversationId]);
@@ -238,7 +268,12 @@ This is a manually entered profile — no formatted resume available.`;
             />
             <label htmlFor="resume-upload" className="cursor-pointer">
               <Upload className="w-10 h-10 mx-auto mb-3 text-base-content/30" />
-              {fileName ? (
+              {extracting ? (
+                <div className="flex items-center gap-2 justify-center">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  <p className="text-sm font-medium text-primary">Extracting text from PDF...</p>
+                </div>
+              ) : fileName ? (
                 <p className="text-sm font-medium text-primary">{fileName}</p>
               ) : (
                 <>
@@ -246,6 +281,7 @@ This is a manually entered profile — no formatted resume available.`;
                   <p className="text-xs text-base-content/40 mt-1">.txt, .pdf, .doc supported</p>
                 </>
               )}
+              
             </label>
           </div>
 

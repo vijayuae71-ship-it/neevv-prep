@@ -43,6 +43,35 @@ const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) =
 
     const data = await res.json();
 
+    // If conversation expired/not found, retry with fresh conversation
+    if (res.status === 404 && conversation_id) {
+      const retryRes = await fetch(DIFY_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: query || "",
+          response_mode: "blocking",
+          conversation_id: "",
+          user: user || "neevv-user",
+        }),
+      });
+      const retryData = await retryRes.json();
+      if (retryRes.ok) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            answer: retryData.answer,
+            conversation_id: retryData.conversation_id,
+          }),
+        };
+      }
+    }
+
     if (!res.ok) {
       return {
         statusCode: res.status,

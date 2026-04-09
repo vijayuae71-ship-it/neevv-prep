@@ -44,6 +44,35 @@ export default async (request: Request) => {
       }),
     });
 
+    // If conversation expired/not found, retry with fresh conversation
+    if (response.status === 404 && conversation_id) {
+      const retryResponse = await fetch("https://api.dify.ai/v1/chat-messages", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: query || "",
+          response_mode: "streaming",
+          conversation_id: "",
+          user: user || "neevv-user",
+        }),
+      });
+      if (retryResponse.ok) {
+        return new Response(retryResponse.body, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      }
+    }
+
     if (!response.ok) {
       const errText = await response.text();
       return new Response(JSON.stringify({ error: errText }), {
