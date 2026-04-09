@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { FileText, Upload, CheckCircle, AlertTriangle, ArrowRight, User, GraduationCap, Briefcase, MapPin, X, Loader2, Sparkles, Target, BarChart3, Key } from 'lucide-react';
+import { FileText, Upload, CheckCircle, AlertTriangle, ArrowRight, User, GraduationCap, Briefcase, MapPin, X, Loader2, Sparkles, Target, BarChart3, Key, Linkedin } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { sendMessage } from '../utils/difyApi';
+import { parseLinkedInPDF } from '../utils/linkedinParser';
 import type { NeevScore } from '../types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
@@ -199,7 +200,7 @@ This is a manually entered profile — no formatted resume available.`;
           <p className="text-base-content/60">Let&apos;s assess your professional foundation before entering the market.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Upload/Paste Resume */}
           <button
             onClick={() => setMode('upload')}
@@ -231,6 +232,43 @@ This is a manually entered profile — no formatted resume available.`;
             </p>
             <div className="mt-4 flex items-center text-secondary text-sm font-medium">
               Quick start <ArrowRight className="w-4 h-4 ml-1" />
+            </div>
+          </button>
+
+          {/* LinkedIn Import */}
+          <button
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.pdf';
+              input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                setExtracting(true);
+                setMode('upload');
+                try {
+                  const profile = await parseLinkedInPDF(file);
+                  setResumeText(profile.fullText);
+                  setFileName(file.name);
+                } catch {
+                  setError('Could not parse LinkedIn PDF. Please paste your resume text instead.');
+                } finally {
+                  setExtracting(false);
+                }
+              };
+              input.click();
+            }}
+            className="glass-card p-8 text-left hover-lift cursor-pointer group transition-all duration-300 border-2 border-transparent hover:border-info/30"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-info/10 flex items-center justify-center mb-4 group-hover:bg-info/20 transition-colors">
+              <Linkedin className="w-7 h-7 text-info" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Import LinkedIn PDF</h3>
+            <p className="text-sm text-base-content/60">
+              Download your LinkedIn profile as PDF and upload it — we&apos;ll extract everything automatically.
+            </p>
+            <div className="mt-4 flex items-center text-info text-sm font-medium">
+              <span className="badge badge-xs badge-info mr-2">NEW</span> Quick &amp; easy <ArrowRight className="w-4 h-4 ml-1" />
             </div>
           </button>
         </div>

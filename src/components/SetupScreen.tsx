@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { GraduationCap, Briefcase, User, ArrowRight, Mail, FileText, Upload, X, CheckCircle } from 'lucide-react';
+import { GraduationCap, Briefcase, User, ArrowRight, Mail, FileText, Upload, X, CheckCircle, Linkedin, Loader2 } from 'lucide-react';
+import { parseLinkedInPDF } from '../utils/linkedinParser';
 
 interface SetupScreenProps {
   onStart: (name: string, targetSchool: string, background: string, email: string, resumeText: string) => void;
@@ -14,6 +15,8 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
   const [resumeFileName, setResumeFileName] = useState('');
   const [resumeMode, setResumeMode] = useState<'none' | 'upload' | 'paste'>('none');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const linkedinInputRef = useRef<HTMLInputElement>(null);
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
 
   const canStart = name.trim() && targetSchool.trim() && background.trim();
 
@@ -37,6 +40,28 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
       setResumeText('');
       setResumeFileName('');
       alert('Could not read file. Please paste your resume instead.');
+    }
+  };
+
+  const handleLinkedInImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLinkedinLoading(true);
+    try {
+      const profile = await parseLinkedInPDF(file);
+      if (profile.name) setName(profile.name);
+      if (profile.headline || profile.experience) {
+        setBackground(profile.headline + (profile.experience ? '\n\n' + profile.experience.substring(0, 500) : ''));
+      }
+      if (profile.fullText) {
+        setResumeText(profile.fullText);
+        setResumeMode('upload');
+        setResumeFileName('LinkedIn Profile.pdf');
+      }
+    } catch {
+      alert('Could not parse LinkedIn PDF. Please try uploading manually.');
+    } finally {
+      setLinkedinLoading(false);
     }
   };
 
@@ -66,6 +91,33 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart }) => {
           <div className="divider my-0"></div>
 
           <div className="space-y-4">
+            {/* LinkedIn Import */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Linkedin size={16} />
+                <span>Quick Import from LinkedIn</span>
+                <span className="badge badge-xs badge-primary">NEW</span>
+              </div>
+              <p className="text-xs text-base-content/50">
+                Download your LinkedIn profile as PDF (Profile → More → Save to PDF), then upload it here.
+              </p>
+              <button
+                className={`btn btn-sm btn-outline btn-primary gap-2 ${linkedinLoading ? 'loading' : ''}`}
+                onClick={() => linkedinInputRef.current?.click()}
+                disabled={linkedinLoading}
+              >
+                {linkedinLoading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {linkedinLoading ? 'Parsing...' : 'Upload LinkedIn PDF'}
+              </button>
+              <input
+                ref={linkedinInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={handleLinkedInImport}
+              />
+            </div>
+
             <label className="input input-bordered flex items-center gap-2">
               <User className="h-[1em] opacity-50" />
               <input
