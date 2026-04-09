@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, ClipboardList, AlertCircle, Mic, MicOff, Volume2, VolumeX, Lightbulb, ChevronDown, ChevronUp, BarChart3, Sparkles, Video, VideoOff, UserCheck, Calculator, Timer } from 'lucide-react';
 import { Message, SpeechAnalyticsSummary } from '../types';
+import { isDeepgramAvailable, startRecording, stopRecording, cancelRecording, hasActiveRecording, getRecordingDuration } from '../utils/deepgramSTT';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -98,7 +99,8 @@ function stripMarkdown(text: string): string {
 }
 
 function hasSpeechRecognition(): boolean {
-  return !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
+  // Prefer Deepgram, fallback to Web Speech API
+  return isDeepgramAvailable() || !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
 }
 
 function hasSpeechSynthesis(): boolean {
@@ -486,16 +488,45 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return () => {
       if (hasSpeechSynthesis()) window.speechSynthesis.cancel();
       if (recognitionRef.current) recognitionRef.current.abort();
+      cancelRecording();
     };
   }, []);
 
-  const toggleListening = useCallback(() => {
+  const toggleListening = useCallback(async () => {
     if (isListening) {
-      if (recognitionRef.current) recognitionRef.current.stop();
+      // Stop recording
       setIsListening(false);
+      if (hasActiveRecording()) {
+        try {
+          const { transcript, durationMs } = await stopRecording();
+          if (transcript) {
+            setInput(prev => prev ? prev + ' ' + transcript : transcript);
+            // Store duration for speech analytics
+            (window as any).__lastVoiceDurationMs = durationMs;
+          }
+        } catch (err) {
+          console.error('Deepgram stop error:', err);
+        }
+      } else if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       return;
     }
-    if (!hasSpeechRecognition()) { return; }
+
+    // Try Deepgram first
+    if (isDeepgramAvailable()) {
+      try {
+        if (hasSpeechSynthesis()) { window.speechSynthesis.cancel(); setIsSpeaking(false); }
+        await startRecording();
+        setIsListening(true);
+        return;
+      } catch (err) {
+        console.warn('Deepgram start failed, falling back to Web Speech API:', err);
+      }
+    }
+
+    // Fallback to Web Speech API
+    if (!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
@@ -520,11 +551,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setVoiceEnabled((v) => !v);
   }, [voiceEnabled]);
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed || isCoachTyping) return;
-    if (isListening && recognitionRef.current) { recognitionRef.current.stop(); setIsListening(false); }
-    onSend(trimmed);
+  const handleSend = async () => {
+    let finalInput = input.trim();
+
+    // If still recording, stop and get final transcript
+    if (isListening && hasActiveRecording()) {
+      setIsListening(false);
+      try {
+        const { transcript } = await stopRecording();
+        if (transcript) finalInput = finalInput ? finalInput + ' ' + transcript : transcript;
+      } catch (err) { /* use what we have */ }
+    } else if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
+    if (!finalInput || isCoachTyping) return;
+    onSend(finalInput);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
@@ -639,8 +682,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Browser compatibility banner for voice */}
       {!hasSpeechRecognition() && (
-        <div style={{ background: '#FEF3C7', color: '#92400E', padding: '0.5rem 1rem', fontSize: '0.75rem', textAlign: 'center', borderRadius: '0.5rem', margin: '0.5rem 1rem' }}>
-          🎙️ Voice input requires Chrome or Edge browser. Text input works everywhere!
+        <div className="text-xs text-warning text-center py-1 bg-warning/10 rounded mb-2 mx-4 mt-2">
+          🎙️ Voice input requires microphone access. Please allow microphone permission when prompted.
         </div>
       )}
 
@@ -760,10 +803,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {/* Mic button */}
           {hasSpeechRecognition() && (
             <button
-              className={`btn btn-square btn-sm ${isListening ? 'btn-error animate-pulse' : 'btn-ghost'}`}
-              onClick={toggleListening}
+              className={`btn btn-ghost btn-sm btn-square ${isListening ? 'text-error animate-pulse' : 'text-primary'}`}
+              onClick={() => toggleListening()}
               disabled={isCoachTyping}
-              title={isListening ? 'Stop listening' : 'Speak your answer'}
+              title={isListening ? 'Stop recording (Deepgram AI)' : 'Start voice input (Deepgram AI)'}
             >
               {isListening ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
