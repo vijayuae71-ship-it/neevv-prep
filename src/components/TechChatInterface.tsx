@@ -299,6 +299,21 @@ export const TechChatInterface: React.FC<TechChatInterfaceProps> = ({
         </div>
       </div>
 
+      {/* Progress Indicator */}
+      <div className="px-4 py-2 bg-base-100 border-b border-base-300">
+        <div className="flex items-center justify-between text-xs text-base-content/60 mb-1">
+          <span>Question {Math.min(questionNumber + 1, 5)} of 5</span>
+          <span>~{Math.max(1, (5 - questionNumber) * 2)} min remaining</span>
+        </div>
+        <div className="flex gap-1">
+          {[0, 1, 2, 3, 4].map(i => (
+            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i < questionNumber ? 'bg-success' : i === questionNumber ? 'bg-primary animate-pulse' : 'bg-base-300'
+            }`} />
+          ))}
+        </div>
+      </div>
+
       {/* Error */}
       {error && (
         <div className="alert alert-error mx-4 mt-2 shadow-sm">

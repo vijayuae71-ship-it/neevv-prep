@@ -80,11 +80,13 @@ export const GetHelp: React.FC = () => {
         </div>
 
         {/* FAQ Category Filter */}
-        <div className="flex gap-2 flex-wrap mb-4">
-          <button className={`btn btn-xs ${catFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setCatFilter('all')}>All</button>
-          {CATEGORIES.map(cat => (
-            <button key={cat} className={`btn btn-xs ${catFilter === cat ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setCatFilter(cat)}>{cat}</button>
-          ))}
+        <div className="sticky top-14 z-30 bg-base-100 py-2 border-b border-base-300">
+          <div className="flex gap-2 flex-wrap">
+            <button className={`btn btn-xs ${catFilter === 'all' ? 'border border-primary text-primary bg-primary/10' : 'btn-ghost'}`} onClick={() => setCatFilter('all')}>All</button>
+            {CATEGORIES.map(cat => (
+              <button key={cat} className={`btn btn-xs ${catFilter === cat ? 'border border-primary text-primary bg-primary/10' : 'btn-ghost'}`} onClick={() => setCatFilter(cat)}>{cat}</button>
+            ))}
+          </div>
         </div>
 
         {/* FAQ List */}

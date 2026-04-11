@@ -104,11 +104,54 @@ export const ProgressDashboard: React.FC = () => {
   if (totalSessions === 0) {
     return (
       <div className="min-h-screen bg-base-100 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-20">
-            <BarChart3 size={48} className="mx-auto text-base-content/30 mb-4" />
-            <h2 className="text-2xl font-bold text-base-content mb-2">No Sessions Yet</h2>
-            <p className="text-base-content/60">Complete your first mock interview to see your progress here!</p>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="text-center pt-4 pb-2">
+            <BarChart3 size={40} className="mx-auto text-primary/40 mb-2" />
+            <h2 className="text-xl font-bold text-base-content mb-1">Your Progress Dashboard</h2>
+            <p className="text-sm text-base-content/60 max-w-md mx-auto">
+              After your first mock interview, you'll see score trends, category breakdowns, streak tracking, and detailed analytics here.
+            </p>
+          </div>
+
+          {/* Preview Stats Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 opacity-50">
+            {[
+              { icon: <Target size={20} className="text-primary" />, val: '—', label: 'Total Sessions' },
+              { icon: <TrendingUp size={20} className="text-info" />, val: '—', label: 'Average Score' },
+              { icon: <Trophy size={20} className="text-warning" />, val: '—', label: 'Best Score' },
+              { icon: <Flame size={20} className="text-error" />, val: '—', label: 'Day Streak' },
+            ].map((s, i) => (
+              <div key={i} className="card bg-base-200">
+                <div className="card-body p-4 items-center text-center">
+                  {s.icon}
+                  <p className="text-2xl font-bold text-base-content">{s.val}</p>
+                  <p className="text-xs text-base-content/60">{s.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Preview Chart Placeholder */}
+          <div className="card bg-base-200 opacity-50">
+            <div className="card-body p-6">
+              <h3 className="font-semibold text-sm text-base-content/70 mb-3">📈 Score Trend</h3>
+              <div className="flex items-end gap-2 h-24">
+                {[3, 5, 4, 6, 7, 6, 8, 7, 9, 8].map((h, i) => (
+                  <div key={i} className="flex-1 bg-primary/20 rounded-t" style={{ height: `${h * 10}%` }} />
+                ))}
+              </div>
+              <p className="text-xs text-center text-base-content/40 mt-2">Your score trend will appear here</p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center py-2">
+            <p className="text-sm text-base-content/50 mb-3">Complete a mock interview to start tracking</p>
+            <div className="flex justify-center gap-2">
+              <span className="badge badge-primary badge-outline gap-1">📊 Score Trends</span>
+              <span className="badge badge-secondary badge-outline gap-1">🔥 Streak Calendar</span>
+              <span className="badge badge-accent badge-outline gap-1">📋 Session History</span>
+            </div>
           </div>
         </div>
       </div>

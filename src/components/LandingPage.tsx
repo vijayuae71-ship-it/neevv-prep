@@ -82,23 +82,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
             Get scored on Foundation, Logic & Communication — with real-time speech analytics.
           </p>
 
+          <p className="text-sm sm:text-base text-primary font-semibold mb-4 animate-slideUp">
+            ✨ Get interview-ready in 15 minutes — personalized questions, instant scorecard
+          </p>
+
           <div className="flex flex-col items-center justify-center gap-3 mb-8 animate-slideUp w-full max-w-sm mx-auto">
             <button className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow w-full" onClick={onStartInterview}>
               MBA Mock Interview <ArrowRight size={20} />
             </button>
-            {onStartTechInterview && (
-              <button className="btn btn-secondary btn-lg gap-2 shadow-lg shadow-secondary/25 hover:shadow-secondary/40 transition-shadow w-full" onClick={onStartTechInterview}>
-                🖥️ Tech Interview <ArrowRight size={20} />
+            <p className="text-xs text-base-content/40 mt-1">Or explore more:</p>
+            <div className="flex gap-2 w-full">
+              {onStartTechInterview && (
+                <button className="btn btn-outline btn-sm flex-1 gap-1" onClick={onStartTechInterview}>
+                  🖥️ Tech Interview
+                </button>
+              )}
+              {onStartLifecycle && (
+                <button className="btn btn-outline btn-sm flex-1 gap-1" onClick={onStartLifecycle}>
+                  🚀 Career Hub
+                </button>
+              )}
+              <button className="btn btn-ghost btn-sm flex-1 gap-1 border border-base-300" onClick={onGoToTools}>
+                🛠️ Free Tools
               </button>
-            )}
-            {onStartLifecycle && (
-              <button className="btn btn-accent btn-lg gap-2 shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-shadow w-full" onClick={onStartLifecycle}>
-                🚀 Career Lifecycle <ArrowRight size={20} />
-              </button>
-            )}
-            <button className="btn btn-ghost btn-lg gap-2 border border-base-300 hover:border-primary/30 w-full" onClick={onGoToTools}>
-              🛠️ Explore Free Tools <ArrowRight size={20} />
-            </button>
+            </div>
           </div>
 
           <p className="text-xs text-base-content/40 animate-fadeIn">
@@ -112,9 +119,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
         <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
             { value: 25, suffix: '+', label: 'Years Coaching Experience' },
-            { value: 1000, suffix: '+', label: 'Sessions Coached by Our Team' },
+            { value: 1000, suffix: '+', label: 'Practice Sessions Completed' },
             { value: 50, suffix: '+', label: 'B-Schools Covered' },
-            { value: 92, suffix: '%', label: 'Student Satisfaction' },
+            { value: 92, suffix: '%', label: 'Student Satisfaction*' },
           ].map((stat, i) => (
             <div key={i}>
               <p className="text-3xl font-extrabold text-primary">
@@ -124,6 +131,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
             </div>
           ))}
         </div>
+        <p className="text-[10px] text-base-content/30 text-center mt-2">*Based on post-session feedback from beta testers (n=50)</p>
       </section>
 
       {/* ═══════ B-SCHOOLS COVERED ═══════ */}

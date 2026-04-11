@@ -19,6 +19,7 @@ import { TechScorecard } from './components/TechScorecard';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { LifecycleOrchestrator } from './components/LifecycleOrchestrator';
 import { AuthScreen } from './components/AuthScreen';
+import { OnboardingScreen } from './components/OnboardingScreen';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
 import { sendMessage, sendMessageStreaming } from './utils/difyApi';
 import { getJSON, setJSON } from './utils/localStorage';
@@ -143,6 +144,10 @@ const App: React.FC = () => {
     localStorage.removeItem('neevv_auth');
     setPage('landing');
   }, []);
+
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem('neevv_onboarding_complete');
+  });
 
   const [page, setPage] = useState<Page>('landing');
   const [phase, setPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
@@ -794,6 +799,22 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
   // Auth gate
   if (!authUser) {
     return <AuthScreen onLogin={handleLogin} />;
+  }
+
+  if (showOnboarding) {
+    return (
+      <OnboardingScreen
+        onComplete={(school) => {
+          localStorage.setItem('neevv_onboarding_complete', 'true');
+          if (school) localStorage.setItem('neevv_target_school', school);
+          setShowOnboarding(false);
+        }}
+        onSkip={() => {
+          localStorage.setItem('neevv_onboarding_complete', 'true');
+          setShowOnboarding(false);
+        }}
+      />
+    );
   }
 
   if (page === 'landing') {

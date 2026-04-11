@@ -106,6 +106,9 @@ export const DailyPractice: React.FC<DailyPracticeProps> = ({ onPractice }) => {
                   <div>
                     <div className="text-3xl font-bold text-base-content">{streak}</div>
                     <div className="text-xs text-base-content/60">Day Streak</div>
+                    <p className="text-xs text-base-content/50 mt-1">
+                      {streak === 0 ? '🚀 Start your streak today!' : streak < 3 ? '🔥 Great start — keep it going!' : streak < 7 ? '💪 Building momentum!' : streak < 30 ? '🏆 You\'re on fire!' : '👑 Legendary streak!'}
+                    </p>
                   </div>
                 </div>
               </div>

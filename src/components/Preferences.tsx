@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Settings, Volume2, Mic, Clock, User, GraduationCap, Save, Check } from 'lucide-react';
+import { Settings, Volume2, Mic, Clock, User, GraduationCap, Save, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { getJSON, setJSON } from '../utils/localStorage';
 
 interface UserPrefs {
@@ -27,6 +27,8 @@ const STORAGE_KEY = 'neevv_preferences';
 export const Preferences: React.FC = () => {
   const [prefs, setPrefs] = useState<UserPrefs>(DEFAULT_PREFS);
   const [saved, setSaved] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     const stored = getJSON<UserPrefs | null>(STORAGE_KEY, null);
@@ -38,11 +40,19 @@ export const Preferences: React.FC = () => {
   const savePrefs = useCallback(() => {
     setJSON(STORAGE_KEY, prefs);
     setSaved(true);
+    setShowToast(true);
     setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => setShowToast(false), 3000);
   }, [prefs]);
 
   return (
     <div className="min-h-screen bg-base-100">
+      {/* Toast Banner */}
+      {showToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success/90 text-success-content px-6 py-3 rounded-xl shadow-lg text-sm font-medium animate-bounce">
+          ✅ Preferences saved successfully
+        </div>
+      )}
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">
@@ -110,13 +120,27 @@ export const Preferences: React.FC = () => {
             </div>
           </div>
 
-          {/* Interview Settings */}
+          {/* Divider */}
+          <div className="divider text-xs text-base-content/40">Advanced</div>
+
+          {/* Interview Settings — Collapsible */}
           <div className="card bg-base-200">
-            <div className="card-body p-5">
-              <h3 className="font-semibold text-base-content flex items-center gap-2 mb-4">
+            <div
+              className="card-body p-5 cursor-pointer"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+            >
+              <h3 className="font-semibold text-base-content flex items-center gap-2">
                 <GraduationCap size={18} className="text-primary" /> Interview Settings
+                <span className="ml-auto">
+                  {showAdvanced ? <ChevronUp size={16} className="opacity-50" /> : <ChevronDown size={16} className="opacity-50" />}
+                </span>
               </h3>
-              <div className="space-y-4">
+              {!showAdvanced && (
+                <p className="text-xs text-base-content/50 mt-1">Duration, coaching style, hints & math validation</p>
+              )}
+            </div>
+            {showAdvanced && (
+              <div className="px-5 pb-5 space-y-4">
                 <div>
                   <label className="text-xs text-base-content/60 mb-1 block">Interview Duration</label>
                   <select className="select select-bordered select-sm w-full" value={prefs.interviewDuration} onChange={e => setPrefs({ ...prefs, interviewDuration: e.target.value })}>
@@ -148,7 +172,7 @@ export const Preferences: React.FC = () => {
                   <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={prefs.mathValidation} onChange={e => setPrefs({ ...prefs, mathValidation: e.target.checked })} />
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

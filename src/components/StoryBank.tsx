@@ -138,12 +138,48 @@ export const StoryBank: React.FC = () => {
 
         {/* Stories List */}
         {filtered.length === 0 && !isAdding ? (
-          <div className="text-center py-16">
-            <BookMarked size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-base-content/50 mb-3">No stories yet. Start building your STAR story bank!</p>
-            <button className="btn btn-primary btn-sm gap-1" onClick={() => setIsAdding(true)}>
-              <Plus size={16} /> Add Your First Story
-            </button>
+          <div className="space-y-4">
+            {/* Description */}
+            <div className="text-center py-8">
+              <BookMarked size={48} className="mx-auto mb-3 text-primary/30" />
+              <h2 className="text-xl font-bold text-base-content mb-2">Your STAR Story Bank</h2>
+              <p className="text-sm text-base-content/60 max-w-md mx-auto mb-4">
+                Save your best interview stories here. Organize by tags, rate their impact, and have them ready when your interviewer asks "Tell me about a time..."
+              </p>
+            </div>
+
+            {/* Sample Story Card */}
+            <div className="card bg-base-200 border border-dashed border-primary/30 opacity-70">
+              <div className="card-body p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="badge badge-ghost badge-xs">📌 Example</span>
+                  <h3 className="font-semibold text-base-content text-sm">Led Cross-Functional Product Launch at TCS</h3>
+                  <div className="flex">
+                    {[1,2,3,4].map(i => <Star key={i} size={10} className="text-secondary fill-secondary" />)}
+                    <Star size={10} className="text-secondary" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="p-2 bg-base-300 rounded text-xs"><span className="font-semibold text-primary">S:</span> <span className="text-base-content/60">Led a 12-person team to launch a new SaaS product...</span></div>
+                  <div className="p-2 bg-base-300 rounded text-xs"><span className="font-semibold text-primary">T:</span> <span className="text-base-content/60">Coordinate 3 departments and ship in 8 weeks...</span></div>
+                  <div className="p-2 bg-base-300 rounded text-xs"><span className="font-semibold text-primary">A:</span> <span className="text-base-content/60">Created daily standups, resolved vendor conflict...</span></div>
+                  <div className="p-2 bg-base-300 rounded text-xs"><span className="font-semibold text-primary">R:</span> <span className="text-base-content/60">Shipped 2 weeks early, ₹3.2Cr revenue in Q1...</span></div>
+                </div>
+                <div className="flex gap-1 mt-2">
+                  <span className="badge badge-ghost badge-xs">#leadership</span>
+                  <span className="badge badge-ghost badge-xs">#cross-functional</span>
+                  <span className="badge badge-ghost badge-xs">#product-launch</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="text-center">
+              <button className="btn btn-primary btn-sm gap-1" onClick={() => setIsAdding(true)}>
+                <Plus size={16} /> Create Your First Story
+              </button>
+              <p className="text-xs text-base-content/40 mt-2">Most successful candidates have 6-8 stories ready</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

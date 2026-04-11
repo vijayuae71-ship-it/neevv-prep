@@ -14,7 +14,7 @@ const techStackOptions = [
   { label: 'C++', icon: '⚡' },
   { label: 'JavaScript', icon: '🌐' },
   { label: 'SQL', icon: '🗄️' },
-  { label: 'Data Structures & Algorithms', icon: '🧮' },
+  { label: 'DSA', icon: '🧮' },
 ];
 
 export const TechSetup: React.FC<TechSetupProps> = ({ onStart, onBack }) => {

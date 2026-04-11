@@ -3,6 +3,22 @@ import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3
 import { ScoreEntry, SpeechAnalyticsSummary } from '../types';
 import { exportMBAScorecardPDF } from '../utils/pdfExport';
 
+function useCountUp(target: number, duration: number = 1500): number {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    if (target === 0) return;
+    const start = Date.now();
+    const step = () => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      setCount(Math.round(target * progress * 10) / 10);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration]);
+  return count;
+}
+
 interface ScorecardProps {
   studentName: string;
   targetSchool: string;
@@ -31,6 +47,7 @@ const getScoreEmoji = (score: number): string => {
 export const Scorecard: React.FC<ScorecardProps> = ({
   studentName, targetSchool, scores, overallScore, coachNote, studentEmail, onRestart, onEmailScorecard, speechSummary, onBack,
 }) => {
+  const animatedScore = useCountUp(overallScore);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [autoSent, setAutoSent] = useState(false);
 
@@ -70,7 +87,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
               <p className="text-base-content/60 text-sm mt-1">{studentName} · Target: {targetSchool}</p>
             </div>
             <div className={`text-4xl font-bold ${getScoreColor(overallScore)}`}>
-              {overallScore}<span className="text-lg text-base-content/40">/10</span>
+              {animatedScore}<span className="text-lg text-base-content/40">/10</span>
             </div>
           </div>
         </div>

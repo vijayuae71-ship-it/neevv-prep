@@ -655,7 +655,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span className="text-primary font-bold text-sm">nP</span>
           </div>
           <div>
-            <p className="font-semibold text-sm text-base-content">neevv Prep Coach</p>
+            <p className="font-semibold text-sm text-base-content">neev Coach</p>
             <p className="text-xs text-base-content/50">
               {isCoachTyping ? '⏳ ' + thinkingMsg : isSpeaking ? '🔊 Speaking...' : 'neev Coach Mock Interview'}
             </p>
@@ -715,6 +715,43 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
         </div>
       </div>
+
+      {/* Progress Indicator */}
+      <div className="px-4 py-2 bg-base-100 border-b border-base-300">
+        <div className="flex items-center justify-between text-xs text-base-content/60 mb-1">
+          <span>Question {Math.min(questionNumber + 1, 5)} of 5</span>
+          <span>~{Math.max(1, (5 - questionNumber) * 3)} min remaining</span>
+        </div>
+        <div className="flex gap-1">
+          {[0, 1, 2, 3, 4].map(i => (
+            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i < questionNumber ? 'bg-success' : i === questionNumber ? 'bg-primary animate-pulse' : 'bg-base-300'
+            }`} />
+          ))}
+        </div>
+        <div className="flex justify-between text-[9px] text-base-content/40 mt-0.5">
+          <span>Behavioral</span>
+          <span>Behavioral</span>
+          <span>Guesstimate</span>
+          <span>Why School</span>
+          <span>Why Now</span>
+        </div>
+      </div>
+
+      {/* Timer Bar */}
+      {timerEnabled && timerActive && (
+        <div className={`px-4 py-1.5 border-b border-base-300 flex items-center justify-between ${timerSeconds <= 30 ? 'bg-error/10' : 'bg-warning/5'}`}>
+          <div className="flex items-center gap-2">
+            <Timer size={14} className={timerSeconds <= 30 ? 'text-error animate-pulse' : 'text-warning'} />
+            <span className={`text-sm font-mono font-bold ${timerSeconds <= 30 ? 'text-error' : 'text-base-content'}`}>
+              {formatTimer(timerSeconds)}
+            </span>
+          </div>
+          <span className="text-xs text-base-content/50">
+            {timerSeconds <= 30 ? '⚡ Wrap up your answer!' : '⏱️ 2-minute timer active'}
+          </span>
+        </div>
+      )}
 
       {/* Browser compatibility banner for voice */}
       {!hasSpeechRecognition() && (
@@ -807,6 +844,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span>{error}</span>
           </div>
         )}
+        {/* Floating hint nudge */}
+        {!isCoachTyping && messages.length > 0 && messages[messages.length - 1]?.role === 'coach' && !isHintLoading && (
+          <div className="flex justify-center py-2">
+            <button
+              className="btn btn-ghost btn-xs gap-1 text-base-content/40 hover:text-primary border border-base-300 rounded-full"
+              onClick={onHint}
+            >
+              <Lightbulb size={12} /> Need a nudge?
+            </button>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 

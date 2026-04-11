@@ -203,6 +203,31 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
           </button>
         </div>
       </div>
+
+      {/* Mobile Bottom Nav */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-base-100 border-t border-base-300 sm:hidden">
+        <div className="flex items-center justify-around h-14">
+          {[
+            { icon: <LayoutDashboard size={20} />, label: 'Interview', page: 'landing' as Page },
+            { icon: <CalendarCheck size={20} />, label: 'Daily', page: 'dailypractice' as Page },
+            { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' as Page },
+            { icon: <Wrench size={20} />, label: 'Tools', page: 'tools' as Page },
+          ].map((item) => (
+            <button
+              key={item.label}
+              className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors ${
+                currentPage === item.page
+                  ? 'text-primary'
+                  : 'text-base-content/50 hover:text-base-content'
+              }`}
+              onClick={() => onNavigate(item.page)}
+            >
+              {item.icon}
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </>
   );
 };

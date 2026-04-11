@@ -104,9 +104,13 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart, onBack }) => 
                 <span>Quick Import from LinkedIn</span>
                 <span className="badge badge-xs badge-primary">NEW</span>
               </div>
-              <p className="text-xs text-base-content/50">
-                Download your LinkedIn profile as PDF (Profile → More → Save to PDF), then upload it here.
-              </p>
+              <div className="flex items-center gap-2 text-xs text-base-content/60">
+                <span className="flex items-center gap-1"><span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">1</span> Go to Profile</span>
+                <span className="text-base-content/30">→</span>
+                <span className="flex items-center gap-1"><span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">2</span> More → Save as PDF</span>
+                <span className="text-base-content/30">→</span>
+                <span className="flex items-center gap-1"><span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">3</span> Upload here</span>
+              </div>
               <button
                 className={`btn btn-sm btn-outline btn-primary gap-2 ${linkedinLoading ? 'loading' : ''}`}
                 onClick={() => linkedinInputRef.current?.click()}

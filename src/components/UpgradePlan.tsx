@@ -27,7 +27,7 @@ const PLANS: Plan[] = [
       'Daily practice questions',
     ],
     highlighted: false,
-    cta: 'Current Plan',
+    cta: 'Start Free ✨',
   },
   {
     id: 'pro', name: 'Pro', icon: <Crown size={24} />,
@@ -77,6 +77,8 @@ const TESTIMONIALS = [
 
 export const UpgradePlan: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [waitlistEmail, setWaitlistEmail] = useState<Record<string, string>>({});
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState<Record<string, boolean>>({});
 
   return (
     <div className="min-h-screen bg-base-100">
@@ -98,7 +100,7 @@ export const UpgradePlan: React.FC = () => {
               onChange={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
             />
             <span className={`text-sm ${billingCycle === 'annual' ? 'text-base-content font-semibold' : 'text-base-content/50'}`}>
-              Annual <span className="badge badge-success badge-xs ml-1">Save 20%</span>
+              Annual <span className="badge badge-success badge-xs ml-1">Save ₹2,400/yr on Pro</span>
             </span>
           </div>
         </div>
@@ -134,13 +136,38 @@ export const UpgradePlan: React.FC = () => {
                       </li>
                     ))}
                   </ul>
-                  <button
-                    className={`btn btn-sm w-full ${plan.id === 'free' ? 'btn-ghost' : 'btn-outline btn-primary'}`}
-                    disabled={plan.id === 'free'}
-                    style={plan.id !== 'free' ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
-                  >
-                    {plan.id === 'free' ? plan.cta : 'Coming Soon'}
-                  </button>
+                  {plan.id === 'free' ? (
+                    <button
+                      className="btn btn-sm w-full btn-primary btn-outline"
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    >
+                      Start Free ✨
+                    </button>
+                  ) : waitlistSubmitted[plan.id] ? (
+                    <div className="text-center py-1">
+                      <span className="text-sm text-success font-medium">✅ You're on the list!</span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      <input
+                        className="input input-bordered input-sm flex-1"
+                        placeholder="your@email.com"
+                        type="email"
+                        value={waitlistEmail[plan.id] || ''}
+                        onChange={e => setWaitlistEmail(prev => ({ ...prev, [plan.id]: e.target.value }))}
+                      />
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          if (waitlistEmail[plan.id]?.includes('@')) {
+                            setWaitlistSubmitted(prev => ({ ...prev, [plan.id]: true }));
+                          }
+                        }}
+                      >
+                        Notify Me
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -160,7 +187,7 @@ export const UpgradePlan: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <div className="avatar placeholder">
                       <div className="bg-primary text-primary-content rounded-full w-8 h-8">
-                        <span className="text-xs">{t.name[0]}</span>
+                        <span className="text-xs">{t.name.split(' ').map(n => n[0]).join('')}</span>
                       </div>
                     </div>
                     <div>
