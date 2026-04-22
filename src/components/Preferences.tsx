@@ -46,7 +46,7 @@ export const Preferences: React.FC = () => {
   }, [prefs]);
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       {/* Toast Banner */}
       {showToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success/90 text-success-content px-6 py-3 rounded-xl shadow-lg text-sm font-medium animate-bounce">

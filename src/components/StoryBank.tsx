@@ -78,7 +78,7 @@ export const StoryBank: React.FC = () => {
   const filtered = filterTag === 'all' ? stories : stories.filter(s => s.tags.toLowerCase().includes(filterTag.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>

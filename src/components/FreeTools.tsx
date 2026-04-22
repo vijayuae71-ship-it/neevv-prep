@@ -244,7 +244,7 @@ const ToolCard: React.FC<{ tool: Tool }> = ({ tool }) => {
 
 export const FreeTools: React.FC<FreeToolsProps> = ({ onBack, onStartInterview }) => {
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       {/* Header */}
       <div className="max-w-5xl mx-auto px-4 pt-8 pb-4">
         <button className="btn btn-ghost btn-sm gap-1 mb-4" onClick={onBack}>

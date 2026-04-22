@@ -51,13 +51,13 @@ const FAQItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview, onStartLifecycle }) => {
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       {/* ═══════ HERO ═══════ */}
       <section className="relative overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-base-100 to-secondary/5 pointer-events-none" />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 left-10 w-56 h-56 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-primary/10 rounded-full opacity-30 pointer-events-none" />
+        <div className="absolute bottom-10 left-10 w-56 h-56 bg-secondary/10 rounded-full opacity-30 pointer-events-none" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 text-center">
           {/* Badge */}

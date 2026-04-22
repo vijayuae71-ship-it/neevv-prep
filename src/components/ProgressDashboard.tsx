@@ -22,15 +22,16 @@ function computeStreak(sessions: SessionRecord[]): number {
   const uniqueDays = new Set(sessions.map(s => s.date));
   let streak = 0;
   const today = new Date();
+  let checkingToday = true;
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
     if (uniqueDays.has(key)) {
       streak++;
+      checkingToday = false;
     } else {
-      // Allow today to be missing (streak still counts if yesterday was practiced)
-      if (i === 0) continue;
+      if (checkingToday) continue;
       break;
     }
   }
@@ -103,7 +104,7 @@ export const ProgressDashboard: React.FC = () => {
 
   if (totalSessions === 0) {
     return (
-      <div className="min-h-screen bg-base-100 p-4">
+      <div className="min-h-screen bg-base-100 p-4 pb-16 sm:pb-0">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="text-center pt-4 pb-2">
             <BarChart3 size={40} className="mx-auto text-primary/40 mb-2" />
@@ -159,7 +160,7 @@ export const ProgressDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 p-4">
+    <div className="min-h-screen bg-base-100 p-4 pb-16 sm:pb-0">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Page Header */}
         <div className="text-center">

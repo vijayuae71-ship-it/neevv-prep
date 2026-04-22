@@ -86,7 +86,7 @@ export const DailyPractice: React.FC<DailyPracticeProps> = ({ onPractice }) => {
   const typeColor = todayQ.type === 'Behavioral' ? 'badge-primary' : todayQ.type === 'Guesstimate' ? 'badge-secondary' : todayQ.type === 'Caselet' ? 'badge-info' : 'badge-accent';
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">

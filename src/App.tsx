@@ -21,18 +21,21 @@ import { LifecycleOrchestrator } from './components/LifecycleOrchestrator';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
-import { sendMessage, sendMessageStreaming } from './utils/difyApi';
+import { sendMessageStreaming } from './utils/difyApi';
 import { getJSON, setJSON } from './utils/localStorage';
 import { analyzeSpeech, computeSummary } from './utils/speechAnalytics';
 import { validateMath, isGuesstimateLikelyAnswer } from './utils/mathValidator';
 
+let _idCounter = 0;
 function makeId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  _idCounter++;
+  return _idCounter.toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 // Detect scorecard in AI response
 function detectScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
-  const lower = text.toLowerCase();
+  const cleanText = text.replace(/\*\*(\d+)\*\*/g, '$1');
+  const lower = cleanText.toLowerCase();
   const hasScorecard = (lower.includes('scorecard') || lower.includes('score')) &&
     (lower.includes('foundation') || lower.includes('logic') || lower.includes('communication'));
 
@@ -48,11 +51,11 @@ function detectScorecard(text: string): { isScorecard: boolean; scores: ScoreEnt
   for (const cat of categories) {
     for (const pattern of cat.patterns) {
       const scoreRegex = new RegExp(pattern + '[^\\d]*?(\\d{1,2})\\s*(?:\\/\\s*10|out of 10)?', 'i');
-      const match = text.match(scoreRegex);
+      const match = cleanText.match(scoreRegex);
       if (match) {
         const score = Math.min(10, Math.max(1, parseInt(match[1], 10)));
         const catIdx = lower.indexOf(pattern);
-        const section = text.substring(catIdx, catIdx + 500);
+        const section = cleanText.substring(catIdx, catIdx + 500);
         const strengthMatch = section.match(/(?:strength|strong|positive)[:\s]*([^\n|*]+)/i);
         const gapMatch = section.match(/(?:gap|improve|weak|critical|area)[:\s]*([^\n|*]+)/i);
         scores.push({
@@ -69,7 +72,7 @@ function detectScorecard(text: string): { isScorecard: boolean; scores: ScoreEnt
   if (scores.length === 0) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
 
   const overallScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
-  const noteMatch = text.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
+  const noteMatch = cleanText.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
   const coachNote = noteMatch
     ? noteMatch[1].trim().replace(/^\*+|\*+$/g, '').trim()
     : `Your overall score is ${overallScore}/10. Keep practicing to strengthen your foundation!`;
@@ -176,10 +179,22 @@ const App: React.FC = () => {
   const [techError, setTechError] = useState<string | null>(null);
 
   const techConversationIdRef = useRef<string>('');
-  const techUserIdRef = useRef<string>('tech-' + Date.now().toString(36));
+  const techUserIdRef = useRef<string>((() => {
+    const stored = localStorage.getItem('neevv_tech_uid');
+    if (stored) return stored;
+    const id = 'tech-' + Date.now().toString(36);
+    localStorage.setItem('neevv_tech_uid', id);
+    return id;
+  })());
 
   const conversationIdRef = useRef<string>('');
-  const userIdRef = useRef<string>('user-' + Date.now().toString(36));
+  const userIdRef = useRef<string>((() => {
+    const stored = localStorage.getItem('neevv_uid');
+    if (stored) return stored;
+    const id = 'user-' + Date.now().toString(36);
+    localStorage.setItem('neevv_uid', id);
+    return id;
+  })());
   const voiceStartRef = useRef<number>(0);
   const isGuesstimateModeRef = useRef<boolean>(false);
 
@@ -248,7 +263,8 @@ const App: React.FC = () => {
   // ═══════ TECH INTERVIEW HANDLERS ═══════
 
   function detectTechScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
-    const lower = text.toLowerCase();
+    const cleanText = text.replace(/\*\*(\d+)\*\*/g, '$1');
+    const lower = cleanText.toLowerCase();
     const hasScorecard = (lower.includes('scorecard') || lower.includes('score')) &&
       (lower.includes('problem solving') || lower.includes('code quality') || lower.includes('optimization') || lower.includes('fundamentals'));
 
@@ -265,11 +281,11 @@ const App: React.FC = () => {
     for (const cat of categories) {
       for (const pattern of cat.patterns) {
         const scoreRegex = new RegExp(pattern + '[^\\d]*?(\\d{1,2})\\s*(?:\\/\\s*10|out of 10)?', 'i');
-        const match = text.match(scoreRegex);
+        const match = cleanText.match(scoreRegex);
         if (match) {
           const score = Math.min(10, Math.max(1, parseInt(match[1], 10)));
           const catIdx = lower.indexOf(pattern);
-          const section = text.substring(catIdx, catIdx + 500);
+          const section = cleanText.substring(catIdx, catIdx + 500);
           const strengthMatch = section.match(/(?:strength|strong|positive)[:\s]*([^\n|*]+)/i);
           const gapMatch = section.match(/(?:gap|improve|weak|critical|area)[:\s]*([^\n|*]+)/i);
           scores.push({
@@ -286,7 +302,7 @@ const App: React.FC = () => {
     if (scores.length === 0) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
 
     const overallScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
-    const noteMatch = text.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
+    const noteMatch = cleanText.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
     const coachNote = noteMatch
       ? noteMatch[1].trim().replace(/^\*+|\*+$/g, '').trim()
       : `Your overall technical score is ${overallScore}/10. Keep coding and improving!`;
@@ -447,7 +463,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     setTechScorecardData(null);
     setTechError(null);
     techConversationIdRef.current = '';
-    techUserIdRef.current = 'tech-' + Date.now().toString(36);
+    const newTechUid = 'tech-' + Date.now().toString(36); localStorage.setItem('neevv_tech_uid', newTechUid); techUserIdRef.current = newTechUid;
   }, []);
 
   const handleTechEmailScorecard = useCallback(async (): Promise<boolean> => {
@@ -701,7 +717,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
     setMathAlert(null);
     setMentorSent(false);
     conversationIdRef.current = '';
-    userIdRef.current = 'user-' + Date.now().toString(36);
+    const newUid = 'user-' + Date.now().toString(36); localStorage.setItem('neevv_uid', newUid); userIdRef.current = newUid;
     isGuesstimateModeRef.current = false;
   }, []);
 

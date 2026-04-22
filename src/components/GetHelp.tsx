@@ -45,7 +45,7 @@ export const GetHelp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">

@@ -108,7 +108,7 @@ export const TechQuestionBank: React.FC<TechQuestionBankProps> = ({ onPractice }
   }, []);
 
   return (
-    <div className="min-h-screen bg-base-200 p-4">
+    <div className="min-h-screen bg-base-200 pb-16 sm:pb-0 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">

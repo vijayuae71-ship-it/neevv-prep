@@ -81,7 +81,7 @@ export const UpgradePlan: React.FC = () => {
   const [waitlistSubmitted, setWaitlistSubmitted] = useState<Record<string, boolean>>({});
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-base-content flex items-center justify-center gap-2">
@@ -146,6 +146,7 @@ export const UpgradePlan: React.FC = () => {
                   ) : waitlistSubmitted[plan.id] ? (
                     <div className="text-center py-1">
                       <span className="text-sm text-success font-medium">✅ You're on the list!</span>
+                      <p className="text-xs text-base-content/60 mt-0.5">We'll notify you at {waitlistEmail[plan.id]} when {plan.name} launches.</p>
                     </div>
                   ) : (
                     <div className="flex gap-1">
@@ -159,7 +160,13 @@ export const UpgradePlan: React.FC = () => {
                       <button
                         className="btn btn-primary btn-sm"
                         onClick={() => {
-                          if (waitlistEmail[plan.id]?.includes('@')) {
+                          const email = waitlistEmail[plan.id];
+                          if (email?.includes('@')) {
+                            try {
+                              const existing = JSON.parse(localStorage.getItem('neevv_waitlist') || '[]');
+                              existing.push({ plan: plan.id, email, date: new Date().toISOString() });
+                              localStorage.setItem('neevv_waitlist', JSON.stringify(existing));
+                            } catch {}
                             setWaitlistSubmitted(prev => ({ ...prev, [plan.id]: true }));
                           }
                         }}
