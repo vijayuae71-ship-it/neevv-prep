@@ -18,13 +18,9 @@ import { TechQuestionBank } from './components/TechQuestionBank';
 import { TechScorecard } from './components/TechScorecard';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { LifecycleOrchestrator } from './components/LifecycleOrchestrator';
+import { CommunityHub } from './components/CommunityHub';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
-import { DomainQuestionBank } from './components/DomainQuestionBank';
-import { DomainSetup, DomainInterviewConfig } from './components/DomainSetup';
-import { DomainChatInterface } from './components/DomainChatInterface';
-import { DomainScorecard } from './components/DomainScorecard';
-import { DOMAIN_CONFIGS } from './data/domainQuestions';
 import { Message, ScoreEntry, SpeechAnalyticsSummary } from './types';
 import { sendMessageStreaming } from './utils/difyApi';
 import { getJSON, setJSON } from './utils/localStorage';
@@ -183,27 +179,6 @@ const App: React.FC = () => {
   } | null>(null);
   const [techError, setTechError] = useState<string | null>(null);
 
-  // Domain Interview state
-  const [domainPhase, setDomainPhase] = useState<'setup' | 'interview' | 'scorecard'>('setup');
-  const [domainMessages, setDomainMessages] = useState<Message[]>([]);
-  const [isDomainCoachTyping, setIsDomainCoachTyping] = useState(false);
-  const [isDomainStreaming, setIsDomainStreaming] = useState(false);
-  const [isDomainHintLoading, setIsDomainHintLoading] = useState(false);
-  const [domainConfig, setDomainConfig] = useState<DomainInterviewConfig | null>(null);
-  const [domainScorecardData, setDomainScorecardData] = useState<{
-    scores: ScoreEntry[]; overallScore: number; coachNote: string;
-  } | null>(null);
-  const [domainError, setDomainError] = useState<string | null>(null);
-
-  const domainConversationIdRef = useRef<string>('');
-  const domainUserIdRef = useRef<string>((() => {
-    const stored = localStorage.getItem('neevv_domain_uid');
-    if (stored) return stored;
-    const id = 'domain-' + Date.now().toString(36);
-    localStorage.setItem('neevv_domain_uid', id);
-    return id;
-  })());
-
   const techConversationIdRef = useRef<string>('');
   const techUserIdRef = useRef<string>((() => {
     const stored = localStorage.getItem('neevv_tech_uid');
@@ -266,7 +241,7 @@ const App: React.FC = () => {
   // ═══════ SAVE SESSION TO PROGRESS ═══════
 
   const saveSessionToProgress = useCallback((
-    type: 'mba' | 'tech' | 'domain',
+    type: 'mba' | 'tech',
     scores: ScoreEntry[],
     overallScore: number,
     targetSchool?: string,
@@ -335,233 +310,6 @@ const App: React.FC = () => {
 
     return { isScorecard: true, scores, overallScore, coachNote };
   }
-
-  // ═══════ DOMAIN INTERVIEW HANDLERS ═══════
-
-  function detectDomainScorecard(text: string): { isScorecard: boolean; scores: ScoreEntry[]; overallScore: number; coachNote: string } {
-    const cleanText = text.replace(/\*\*(\d+)\*\*/g, '$1');
-    const lower = cleanText.toLowerCase();
-    const hasScorecard = (lower.includes('scorecard') || lower.includes('score')) &&
-      (lower.includes('domain knowledge') || lower.includes('problem solving') || lower.includes('communication') || lower.includes('practical application'));
-
-    if (!hasScorecard) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
-
-    const scores: ScoreEntry[] = [];
-    const categories = [
-      { name: 'Domain Knowledge', patterns: ['domain knowledge', 'domain-knowledge', 'technical knowledge'] },
-      { name: 'Problem Solving', patterns: ['problem solving', 'problem-solving', 'analytical'] },
-      { name: 'Communication', patterns: ['communication', 'articulation', 'clarity'] },
-      { name: 'Practical Application', patterns: ['practical application', 'practical-application', 'real-world', 'application'] },
-    ];
-
-    for (const cat of categories) {
-      for (const pattern of cat.patterns) {
-        const scoreRegex = new RegExp(pattern + '[^\\d]*?(\\d{1,2})\\s*(?:\\/\\s*10|out of 10)?', 'i');
-        const match = cleanText.match(scoreRegex);
-        if (match) {
-          const score = Math.min(10, Math.max(1, parseInt(match[1], 10)));
-          const catIdx = lower.indexOf(pattern);
-          const section = cleanText.substring(catIdx, catIdx + 500);
-          const strengthMatch = section.match(/(?:strength|strong|positive)[:\s]*([^\n|*]+)/i);
-          const gapMatch = section.match(/(?:gap|improve|weak|critical|area)[:\s]*([^\n|*]+)/i);
-          scores.push({
-            category: cat.name,
-            score,
-            strength: strengthMatch ? strengthMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Good effort in this area.',
-            gap: gapMatch ? gapMatch[1].trim().replace(/^\*+|\*+$/g, '').trim() : 'Room for improvement with more practice.',
-          });
-          break;
-        }
-      }
-    }
-
-    if (scores.length === 0) return { isScorecard: false, scores: [], overallScore: 0, coachNote: '' };
-
-    const overallScore = Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length);
-    const noteMatch = cleanText.match(/(?:overall|coach['']?s?\s*note|final\s*(?:thought|feedback|note))[:\s]*([^\n]+(?:\n[^\n#|]+)*)/i);
-    const coachNote = noteMatch
-      ? noteMatch[1].trim().replace(/^\*+|\*+$/g, '').trim()
-      : `Your overall domain readiness score is ${overallScore}/10. Keep sharpening your expertise!`;
-
-    return { isScorecard: true, scores, overallScore, coachNote };
-  }
-
-  const handleDomainStart = useCallback(async (config: DomainInterviewConfig) => {
-    setDomainConfig(config);
-    setDomainPhase('interview');
-    setDomainMessages([]);
-    setIsDomainCoachTyping(true);
-    setIsDomainStreaming(true);
-    setDomainError(null);
-
-    const domainLabel = DOMAIN_CONFIGS.find(d => d.key === config.domain)?.label || config.domain;
-
-    try {
-      const intro = `Hi, I'm ${config.name}. I'm preparing for ${domainLabel} placement interviews. My experience: ${config.experience}. I'm targeting a ${config.targetRole} role, with focus on ${config.subSpecialization}.
-
-I'm ready for my domain mock interview.
-
-IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
-1. You are neev Coach — a ${domainLabel} interview coach specializing in placement preparation.
-2. Ask me 5 ${domainLabel}-specific questions covering: core concepts (2 questions), problem solving/case scenarios (2 questions), and practical application (1 question). Focus questions on ${config.subSpecialization}.
-3. Adjust difficulty based on my experience level: ${config.experience}. Start with medium difficulty and adjust.
-4. After each answer, provide feedback AND include an enhanced version under "### ✨ Enhanced Answer" showing a stronger version of MY answer.
-5. After 5 questions, generate the neevv Domain Scorecard with scores for: Domain Knowledge, Problem Solving, Communication, Practical Application (each out of 10), with one strength and one critical gap per category.
-6. Scorecard Format: Use EXACTLY this format:
-   - Domain Knowledge: X/10 | Strength: ... | Gap: ...
-   - Problem Solving: X/10 | Strength: ... | Gap: ...
-   - Communication: X/10 | Strength: ... | Gap: ...
-   - Practical Application: X/10 | Strength: ... | Gap: ...
-   - Overall: X/10
-   - Coach's Note: (2-3 sentences of personalized advice)
-7. Be encouraging but honest. Challenge me on depth and practical understanding.
-8. Always end the interview with "[INTERVIEW_COMPLETE]" marker after generating the scorecard.`;
-
-      const coachMsgId = makeId();
-      setDomainMessages([{ id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
-
-      const response = await sendMessageStreaming(intro, '', domainUserIdRef.current, (partial) => {
-        setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
-      });
-      domainConversationIdRef.current = response.conversation_id;
-      setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
-    } catch (err) {
-      console.error('Failed to start domain interview:', err);
-      setDomainError('Failed to connect to neev Coach. Please try again.');
-    } finally {
-      setIsDomainCoachTyping(false);
-      setIsDomainStreaming(false);
-    }
-  }, []);
-
-  const handleDomainSend = useCallback(async (text: string) => {
-    if (isDomainCoachTyping) return;
-
-    const studentMsg: Message = { id: makeId(), role: 'student', text, timestamp: Date.now() };
-    setDomainMessages((prev) => [...prev, studentMsg]);
-    setIsDomainCoachTyping(true);
-    setIsDomainStreaming(true);
-    setDomainError(null);
-
-    try {
-      const coachMsgId = makeId();
-      setDomainMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
-
-      const response = await sendMessageStreaming(text, domainConversationIdRef.current, domainUserIdRef.current, (partial) => {
-        setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
-      });
-      domainConversationIdRef.current = response.conversation_id;
-      const coachText = response.answer;
-      setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: coachText } : m));
-
-      const scoreResult = detectDomainScorecard(coachText);
-      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
-        setDomainScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
-        saveSessionToProgress('domain', scoreResult.scores, scoreResult.overallScore, undefined, domainConfig?.targetRole);
-        setTimeout(() => setDomainPhase('scorecard'), 2000);
-      }
-    } catch (err) {
-      console.error('Failed to get domain coach response:', err);
-      setDomainError('Failed to get a response. Please try sending again.');
-    } finally {
-      setIsDomainCoachTyping(false);
-      setIsDomainStreaming(false);
-    }
-  }, [isDomainCoachTyping, domainConfig, saveSessionToProgress]);
-
-  const handleDomainHint = useCallback(async () => {
-    if (isDomainCoachTyping || isDomainHintLoading) return;
-    setIsDomainHintLoading(true);
-    setIsDomainStreaming(true);
-    setDomainError(null);
-
-    try {
-      const coachMsgId = makeId();
-      setDomainMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
-
-      const response = await sendMessageStreaming(
-        '[HINT REQUEST] I\'m stuck. Give me a brief hint — key concepts to consider, framework to apply, or approach to structure my answer. Just a nudge, NOT the full answer. 2-3 bullet points max.',
-        domainConversationIdRef.current, domainUserIdRef.current,
-        (partial) => {
-          setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Hint:**\n\n' + partial } : m));
-        }
-      );
-      domainConversationIdRef.current = response.conversation_id;
-      setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: '💡 **Hint:**\n\n' + response.answer } : m));
-    } catch (err) {
-      console.error('Failed to get hint:', err);
-      setDomainError('Couldn\'t load a hint. Try again.');
-    } finally {
-      setIsDomainHintLoading(false);
-      setIsDomainStreaming(false);
-    }
-  }, [isDomainCoachTyping, isDomainHintLoading]);
-
-  const handleDomainRequestScorecard = useCallback(async () => {
-    if (isDomainCoachTyping) return;
-    setIsDomainCoachTyping(true);
-    setIsDomainStreaming(true);
-    setDomainError(null);
-
-    try {
-      const coachMsgId = makeId();
-      setDomainMessages(prev => [...prev, { id: coachMsgId, role: 'coach', text: '', timestamp: Date.now() }]);
-
-      const response = await sendMessageStreaming(
-        'Please generate my neevv Domain Scorecard now with scores for Domain Knowledge, Problem Solving, Communication, and Practical Application (each out of 10), with specific strengths and critical gaps for each category. Include a final coach\'s note.',
-        domainConversationIdRef.current, domainUserIdRef.current,
-        (partial) => {
-          setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: partial } : m));
-        }
-      );
-      domainConversationIdRef.current = response.conversation_id;
-      setDomainMessages(prev => prev.map(m => m.id === coachMsgId ? { ...m, text: response.answer } : m));
-
-      const scoreResult = detectDomainScorecard(response.answer);
-      if (scoreResult.isScorecard && scoreResult.scores.length >= 2) {
-        setDomainScorecardData({ scores: scoreResult.scores, overallScore: scoreResult.overallScore, coachNote: scoreResult.coachNote });
-        saveSessionToProgress('domain', scoreResult.scores, scoreResult.overallScore, undefined, domainConfig?.targetRole);
-        setTimeout(() => setDomainPhase('scorecard'), 2000);
-      }
-    } catch (err) {
-      console.error('Failed to generate domain scorecard:', err);
-      setDomainError('Failed to generate scorecard. Please try again.');
-    } finally {
-      setIsDomainCoachTyping(false);
-      setIsDomainStreaming(false);
-    }
-  }, [isDomainCoachTyping, domainConfig, saveSessionToProgress]);
-
-  const handleDomainRestart = useCallback(() => {
-    setDomainPhase('setup');
-    setDomainMessages([]);
-    setDomainConfig(null);
-    setDomainScorecardData(null);
-    setDomainError(null);
-    domainConversationIdRef.current = '';
-    const newDomainUid = 'domain-' + Date.now().toString(36); localStorage.setItem('neevv_domain_uid', newDomainUid); domainUserIdRef.current = newDomainUid;
-  }, []);
-
-  const handleDomainEmailScorecard = useCallback(async (): Promise<boolean> => {
-    if (!domainConfig?.email || !domainScorecardData) return false;
-    try {
-      const domainLabel = DOMAIN_CONFIGS.find(d => d.key === domainConfig.domain)?.label || domainConfig.domain;
-      let emailBody = `💼 neevv Domain Scorecard\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-      emailBody += `Student: ${domainConfig.name}\nDomain: ${domainLabel}\nTarget Role: ${domainConfig.targetRole}\n`;
-      emailBody += `Experience: ${domainConfig.experience}\nOverall Score: ${domainScorecardData.overallScore}/10\n\n`;
-      for (const s of domainScorecardData.scores) {
-        emailBody += `${s.category}: ${s.score}/10\n  ✅ ${s.strength}\n  ⚠️ ${s.gap}\n\n`;
-      }
-      emailBody += `Coach's Note: ${domainScorecardData.coachNote}\n\n━━━━━━━━━━━━━━━━━━━━━━\nPowered by neevv Prep`;
-      const subject = encodeURIComponent(`💼 Your neevv Domain Scorecard — ${domainScorecardData.overallScore}/10 | ${domainLabel}`);
-      const body = encodeURIComponent(emailBody);
-      window.open(`mailto:${domainConfig.email}?subject=${subject}&body=${body}`, '_blank');
-      return true;
-    } catch (err) {
-      console.error('Failed to open email:', err);
-      return false;
-    }
-  }, [domainConfig, domainScorecardData]);
 
   const handleTechStart = useCallback(async (name: string, company: string, level: string, techStack: string[], email: string) => {
     setTechProfile({ name, company, level, techStack, email });
@@ -785,12 +533,7 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
         handleTechRestart();
       }
     }
-    if (p === 'domain-interview') {
-      if (domainPhase === 'scorecard') {
-        handleDomainRestart();
-      }
-    }
-  }, [phase, techPhase, domainPhase, handleTechRestart, handleDomainRestart]);
+  }, [phase, techPhase, handleTechRestart]);
 
   const handleStart = useCallback(async (name: string, targetSchool: string, background: string, email: string, resumeText: string) => {
     setProfile({ name, targetSchool, background, email, resumeText });
@@ -1100,7 +843,19 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onGoToTools={() => handleNavigate('tools')}
           onStartTechInterview={() => handleNavigate('techinterview')}
           onStartLifecycle={() => handleNavigate('lifecycle')}
-          onStartDomainInterview={() => handleNavigate('domain-interview')}
+        />
+      </>
+    );
+  }
+
+  if (page === 'community') {
+    return (
+      <>
+        <Navbar currentPage="community" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
+        <CommunityHub
+          onBack={handleBackToHome}
+          onStartInterview={() => handleNavigate('interview')}
+          onNavigateToQBank={() => handleNavigate('questionbank')}
         />
       </>
     );
@@ -1257,69 +1012,6 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           error={techError}
           onRequestScorecard={handleTechRequestScorecard}
           isStreaming={isTechStreaming}
-          onBack={handleBackToHome}
-        />
-      </>
-    );
-  }
-
-  // ═══════ DOMAIN INTERVIEW PAGES ═══════
-
-  if (page === 'domain-qbank') {
-    return (
-      <>
-        <Navbar currentPage="domain-qbank" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <DomainQuestionBank
-          onBack={handleBackToHome}
-          onStartDomainInterview={(domain) => {
-            setPage('domain-interview');
-          }}
-        />
-      </>
-    );
-  }
-
-  if (page === 'domain-interview' && domainPhase === 'setup') {
-    return (
-      <>
-        <Navbar currentPage="domain-interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <DomainSetup onStart={handleDomainStart} onBack={handleBackToHome} />
-      </>
-    );
-  }
-
-  if (page === 'domain-interview' && domainPhase === 'scorecard' && domainScorecardData && domainConfig) {
-    return (
-      <>
-        <Navbar currentPage="domain-interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <DomainScorecard
-          config={domainConfig}
-          scores={domainScorecardData.scores}
-          overallScore={domainScorecardData.overallScore}
-          coachNote={domainScorecardData.coachNote}
-          onBack={handleBackToHome}
-          onRetry={handleDomainRestart}
-          onEmailScorecard={domainConfig.email ? handleDomainEmailScorecard : undefined}
-        />
-      </>
-    );
-  }
-
-  if (page === 'domain-interview' && domainPhase === 'interview') {
-    return (
-      <>
-        <Navbar currentPage="domain-interview" onNavigate={handleNavigate} userName={authUser.name} onLogout={handleLogout} />
-        <DomainChatInterface
-          config={domainConfig!}
-          messages={domainMessages}
-          onSend={handleDomainSend}
-          onHint={handleDomainHint}
-          isCoachTyping={isDomainCoachTyping}
-          isHintLoading={isDomainHintLoading}
-          questionNumber={Math.min(5, Math.floor(domainMessages.length / 2))}
-          error={domainError}
-          onRequestScorecard={handleDomainRequestScorecard}
-          isStreaming={isDomainStreaming}
           onBack={handleBackToHome}
         />
       </>

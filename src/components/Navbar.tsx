@@ -3,10 +3,10 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket, Sun, Moon, Briefcase
+  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket, Sun, Moon, Users
 } from 'lucide-react';
 
-export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle' | 'domain-qbank' | 'domain-interview';
+export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle' | 'community';
 
 interface NavbarProps {
   currentPage: Page;
@@ -42,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
 
   const sidebarItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' },
+    { icon: <Users size={20} />, label: '👥 Community', page: 'community' },
     { icon: <Rocket size={20} />, label: '🚀 Career Lifecycle', page: 'lifecycle' },
     { icon: <LayoutDashboard size={20} />, label: 'Interview Hub', page: 'interview' },
     { icon: <Target size={20} />, label: 'Question Bank', page: 'questionbank' },
@@ -51,8 +52,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
     { icon: <Wrench size={20} />, label: 'Free Tools', page: 'tools', dividerAfter: true },
     { icon: <Code2 size={20} />, label: '🆕 Tech Interview', page: 'techinterview' },
     { icon: <Terminal size={20} />, label: 'Tech Question Bank', page: 'techquestionbank', dividerAfter: true },
-    { icon: <Briefcase size={20} />, label: '💼 Domain Interview', page: 'domain-interview' },
-    { icon: <BookOpen size={20} />, label: 'Domain Q-Bank', page: 'domain-qbank', dividerAfter: true },
     { icon: <Settings size={20} />, label: 'Preferences', page: 'preferences' },
     { icon: <CreditCard size={20} />, label: 'Upgrade Plan', page: 'upgrade' },
     { icon: <HelpCircle size={20} />, label: 'Get Help', page: 'help' },
@@ -68,8 +67,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
   const desktopLinks: { label: string; page: Page }[] = [
     { label: 'Home', page: 'landing' },
     { label: 'Career Lifecycle', page: 'lifecycle' },
+    { label: 'Community', page: 'community' },
     { label: 'Progress', page: 'progress' },
-    { label: 'Free Tools', page: 'tools' },
   ];
 
   return (
@@ -211,9 +210,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
         <div className="flex items-center justify-around h-14">
           {[
             { icon: <LayoutDashboard size={20} />, label: 'Interview', page: 'landing' as Page },
-            { icon: <CalendarCheck size={20} />, label: 'Daily', page: 'dailypractice' as Page },
+            { icon: <Users size={20} />, label: 'Community', page: 'community' as Page },
             { icon: <BarChart3 size={20} />, label: 'Progress', page: 'progress' as Page },
-            { icon: <Wrench size={20} />, label: 'Tools', page: 'tools' as Page },
+            { icon: <CalendarCheck size={20} />, label: 'Daily', page: 'dailypractice' as Page },
           ].map((item) => (
             <button
               key={item.label}
