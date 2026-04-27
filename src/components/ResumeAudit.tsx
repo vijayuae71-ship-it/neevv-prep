@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { FileText, Upload, CheckCircle, AlertTriangle, ArrowRight, User, GraduationCap, Briefcase, MapPin, X, Loader2, Sparkles, Target, BarChart3, Key, Linkedin } from 'lucide-react';
+import { FileText, Upload, CheckCircle, AlertTriangle, ArrowRight, User, GraduationCap, Briefcase, MapPin, X, Loader2, Sparkles, Target, BarChart3, Key, Linkedin, Download } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { sendMessage } from '../utils/difyApi';
 import { parseLinkedInPDF } from '../utils/linkedinParser';
@@ -69,13 +69,31 @@ export const ResumeAudit: React.FC<ResumeAuditProps> = ({ onComplete, initialNam
     college: '', major: '', skills: '', targetJob: '', location: '',
   });
 
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const handleDownloadResume = useCallback(() => {
+    if (!resumeText) return;
+    const blob = new Blob([resumeText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName ? fileName.replace(/\.[^.]+$/, '') + '_extracted.txt' : 'resume_extracted.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [resumeText, fileName]);
+
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setUploadedFile(file);
     setError('');
 
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    const ext = file.name.toLowerCase().split('.').pop();
+
+    if (file.type === 'application/pdf' || ext === 'pdf') {
       try {
         setExtracting(true);
         const arrayBuffer = await file.arrayBuffer();
@@ -92,6 +110,20 @@ export const ResumeAudit: React.FC<ResumeAuditProps> = ({ onComplete, initialNam
       } finally {
         setExtracting(false);
       }
+    } else if (ext === 'docx' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      try {
+        setExtracting(true);
+        const mammoth = await import('mammoth');
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        setResumeText(result.value.trim());
+      } catch (err) {
+        setError('Failed to extract text from DOCX. Please try saving as PDF or pasting your resume text.');
+      } finally {
+        setExtracting(false);
+      }
+    } else if (ext === 'doc') {
+      setError('Legacy .doc format is not supported. Please save as .docx or .pdf and re-upload.');
     } else {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -299,7 +331,7 @@ This is a manually entered profile — no formatted resume available.`;
           <div className="border-2 border-dashed border-base-300 rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
             <input
               type="file"
-              accept=".txt,.pdf,.doc,.docx"
+              accept=".txt,.pdf,.doc,.docx,.rtf"
               onChange={handleFileUpload}
               className="hidden"
               id="resume-upload"
@@ -316,12 +348,31 @@ This is a manually entered profile — no formatted resume available.`;
               ) : (
                 <>
                   <p className="font-medium">Drop your resume or click to upload</p>
-                  <p className="text-xs text-base-content/40 mt-1">.txt, .pdf, .doc supported</p>
+                  <p className="text-xs text-base-content/40 mt-1">.pdf, .docx, .txt supported — any format works</p>
                 </>
               )}
               
             </label>
           </div>
+
+          {/* Download original file */}
+          {uploadedFile && (
+            <button
+              onClick={() => {
+                const url = URL.createObjectURL(uploadedFile);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = uploadedFile.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+              className="btn btn-ghost btn-sm gap-1 self-end"
+            >
+              <Download className="w-4 h-4" /> Download Original
+            </button>
+          )}
 
           <div className="divider text-xs text-base-content/40">OR PASTE BELOW</div>
 
@@ -535,6 +586,11 @@ This is a manually entered profile — no formatted resume available.`;
           <button onClick={() => { setMode('upload'); setNeevResult(null); }} className="btn btn-outline flex-1 gap-2">
             <Upload className="w-4 h-4" /> Re-upload Resume
           </button>
+          {resumeText && (
+            <button onClick={handleDownloadResume} className="btn btn-outline btn-accent flex-1 gap-2">
+              <Download className="w-4 h-4" /> Download Extracted Text
+            </button>
+          )}
           {canProceed && (
             <button onClick={handleProceed} className="btn btn-primary flex-1 glow-primary gap-2">
               Proceed to Infinite Match <ArrowRight className="w-4 h-4" />

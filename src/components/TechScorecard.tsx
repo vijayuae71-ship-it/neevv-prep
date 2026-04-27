@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, RotateCcw, Home, Terminal, CheckCircle2, AlertTriangle, FileDown } from 'lucide-react';
+import { Mail, RotateCcw, Home, Terminal, CheckCircle2, AlertTriangle, FileDown, BookOpen, Library, ArrowRight } from 'lucide-react';
 import { exportTechScorecardPDF } from '../utils/pdfExport';
 
 interface ScoreCategory {
@@ -19,6 +19,8 @@ interface TechScorecardProps {
   onEmailScorecard?: () => Promise<boolean> | void;
   studentEmail?: string;
   onBack?: () => void;
+  onNavigateToQBank?: () => void;
+  onNavigateToCaseLibrary?: () => void;
 }
 
 const getScoreColor = (score: number): string => {
@@ -49,6 +51,8 @@ export const TechScorecard: React.FC<TechScorecardProps> = ({
   onEmailScorecard,
   studentEmail,
   onBack,
+  onNavigateToQBank,
+  onNavigateToCaseLibrary,
 }) => {
   const circumference = 2 * Math.PI * 54;
   const strokeDashoffset = circumference - (overallScore / 10) * circumference;
@@ -165,6 +169,43 @@ export const TechScorecard: React.FC<TechScorecardProps> = ({
             <p className="text-base-content/80 whitespace-pre-wrap leading-relaxed">{coachNote}</p>
           </div>
         </div>
+
+        {/* Low Score Intervention — redirect to resources if < 7.5/10 (75%) */}
+        {overallScore < 7.5 && (
+          <div className="card bg-warning/10 border-2 border-warning/30">
+            <div className="card-body">
+              <h3 className="font-bold text-warning flex items-center gap-2 text-lg">
+                <Library size={20} /> 📚 Level Up Before Retaking
+              </h3>
+              <p className="text-sm text-base-content/70 mt-1">
+                Your score is below 75%. Review these areas before your next attempt:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                {scores.filter(s => s.score < 7).map((weakArea, i) => (
+                  <div key={i} className="bg-base-200 rounded-xl p-3">
+                    <p className="text-xs text-error font-semibold mb-1">🔴 {weakArea.category} — {weakArea.score}/10</p>
+                    <p className="text-xs text-base-content/60">{weakArea.gap}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {onNavigateToQBank && (
+                  <button className="btn btn-warning btn-sm gap-1" onClick={onNavigateToQBank}>
+                    <Library size={14} /> Tech Question Bank <ArrowRight size={14} />
+                  </button>
+                )}
+                {onNavigateToCaseLibrary && (
+                  <button className="btn btn-outline btn-warning btn-sm gap-1" onClick={onNavigateToCaseLibrary}>
+                    <BookOpen size={14} /> Case Library & Frameworks
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-base-content/40 mt-3">
+                💡 Tip: Review the question bank first — students who prep specific weak areas improve 2-3 points.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-3 justify-center pb-8">

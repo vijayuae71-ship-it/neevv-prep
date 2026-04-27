@@ -993,6 +993,8 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onRestart={handleTechRestart}
           onEmailScorecard={techProfile.email ? handleTechEmailScorecard : undefined}
           onBack={handleBackToHome}
+          onNavigateToQBank={() => handleNavigate('techquestionbank')}
+          onNavigateToCaseLibrary={() => handleNavigate('caselibrary')}
         />
       </>
     );
@@ -1044,6 +1046,8 @@ IMPORTANT COACHING INSTRUCTIONS (follow these strictly):
           onEmailScorecard={profile.email ? handleEmailScorecard : undefined}
           speechSummary={speechSummary}
           onBack={handleBackToHome}
+          onNavigateToQBank={() => handleNavigate('questionbank')}
+          onNavigateToCaseLibrary={() => handleNavigate('caselibrary')}
         />
       </>
     );

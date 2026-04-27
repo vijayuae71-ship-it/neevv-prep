@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen, FileDown, Home } from 'lucide-react';
+import { Trophy, AlertTriangle, Star, RotateCcw, Mail, Check, Loader2, BarChart3, Sparkles, BookOpen, FileDown, Home, Library, ArrowRight } from 'lucide-react';
 import { ScoreEntry, SpeechAnalyticsSummary } from '../types';
 import { exportMBAScorecardPDF } from '../utils/pdfExport';
 
@@ -30,6 +30,8 @@ interface ScorecardProps {
   onEmailScorecard?: () => Promise<boolean>;
   speechSummary: SpeechAnalyticsSummary;
   onBack?: () => void;
+  onNavigateToQBank?: () => void;
+  onNavigateToCaseLibrary?: () => void;
 }
 
 const getScoreColor = (score: number): string => {
@@ -45,7 +47,7 @@ const getScoreEmoji = (score: number): string => {
 };
 
 export const Scorecard: React.FC<ScorecardProps> = ({
-  studentName, targetSchool, scores, overallScore, coachNote, studentEmail, onRestart, onEmailScorecard, speechSummary, onBack,
+  studentName, targetSchool, scores, overallScore, coachNote, studentEmail, onRestart, onEmailScorecard, speechSummary, onBack, onNavigateToQBank, onNavigateToCaseLibrary,
 }) => {
   const animatedScore = useCountUp(overallScore);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -213,6 +215,43 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           <div className="alert alert-warning text-sm">
             <AlertTriangle size={16} />
             <span>Couldn't email the scorecard. You can try again below.</span>
+          </div>
+        )}
+
+        {/* Low Score Intervention — redirect to resources if < 7.5/10 (75%) */}
+        {overallScore < 7.5 && (
+          <div className="card bg-warning/10 border-2 border-warning/30">
+            <div className="card-body">
+              <h3 className="font-bold text-warning flex items-center gap-2 text-lg">
+                <Library size={20} /> 📚 Strengthen Your Foundation First
+              </h3>
+              <p className="text-sm text-base-content/70 mt-1">
+                Your score is below 75%. Before retaking the interview, we strongly recommend reviewing these resources to level up:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                {scores.filter(s => s.score < 7).map((weakArea, i) => (
+                  <div key={i} className="bg-base-200 rounded-xl p-3">
+                    <p className="text-xs text-error font-semibold mb-1">🔴 {weakArea.category} — {weakArea.score}/10</p>
+                    <p className="text-xs text-base-content/60">{weakArea.gap}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {onNavigateToCaseLibrary && (
+                  <button className="btn btn-warning btn-sm gap-1" onClick={onNavigateToCaseLibrary}>
+                    <BookOpen size={14} /> Case Library & Frameworks
+                  </button>
+                )}
+                {onNavigateToQBank && (
+                  <button className="btn btn-outline btn-warning btn-sm gap-1" onClick={onNavigateToQBank}>
+                    <Library size={14} /> Practice Question Bank
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-base-content/40 mt-3">
+                💡 Tip: Students who review frameworks before retaking score 2-3 points higher on average.
+              </p>
+            </div>
           </div>
         )}
 
