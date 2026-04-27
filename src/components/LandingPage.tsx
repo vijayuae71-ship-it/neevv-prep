@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   GraduationCap, ArrowRight, Mic, Brain, BarChart3, Lightbulb,
   CheckCircle, ChevronDown, ChevronUp, Sparkles, Shield, Clock,
-  Star, MessageSquare, Target, Users, Calculator, FileText, Zap
+  Star, MessageSquare, Target, Users, Calculator, FileText, Zap, Briefcase
 } from 'lucide-react';
+import { DOMAIN_CONFIGS, getDomainQuestionCount, DOMAIN_QUESTIONS } from '../data/domainQuestions';
 
 interface LandingPageProps {
   onStartInterview: () => void;
   onGoToTools: () => void;
   onStartTechInterview?: () => void;
   onStartLifecycle?: () => void;
+  onStartDomainInterview?: () => void;
 }
 
 // Animated counter
@@ -49,7 +51,7 @@ const FAQItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
   );
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview, onStartLifecycle }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGoToTools, onStartTechInterview, onStartLifecycle, onStartDomainInterview }) => {
   return (
     <div className="min-h-screen bg-base-100 pb-16 sm:pb-0">
       {/* ═══════ HERO ═══════ */}
@@ -97,15 +99,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
                   🖥️ Tech Interview
                 </button>
               )}
+              {onStartDomainInterview && (
+                <button className="btn btn-outline btn-sm flex-1 gap-1" onClick={onStartDomainInterview}>
+                  💼 Domain Interview
+                </button>
+              )}
               {onStartLifecycle && (
                 <button className="btn btn-outline btn-sm flex-1 gap-1" onClick={onStartLifecycle}>
                   🚀 Career Hub
                 </button>
               )}
-              <button className="btn btn-ghost btn-sm flex-1 gap-1 border border-base-300" onClick={onGoToTools}>
-                🛠️ Free Tools
-              </button>
             </div>
+            <button className="btn btn-ghost btn-sm gap-1 border border-base-300 w-full" onClick={onGoToTools}>
+              🛠️ Free Tools
+            </button>
           </div>
 
           <p className="text-xs text-base-content/40 animate-fadeIn">
@@ -120,7 +127,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
           {[
             { value: 25, suffix: '+', label: 'Years Coaching Experience' },
             { value: 1000, suffix: '+', label: 'Practice Sessions Completed' },
-            { value: 50, suffix: '+', label: 'B-Schools Covered' },
+            { value: 60, suffix: '+', label: 'B-Schools Covered' },
             { value: 92, suffix: '%', label: 'Student Satisfaction*' },
           ].map((stat, i) => (
             <div key={i}>
@@ -139,12 +146,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
         <p className="text-xs text-base-content/40 uppercase tracking-widest mb-4">Trusted by students targeting</p>
         <div className="flex flex-wrap justify-center gap-2">
           {['IIM Ahmedabad', 'IIM Bangalore', 'IIM Calcutta', 'IIM Lucknow', 'IIM Indore', 'IIM Kozhikode', 'ISB Hyderabad', 'XLRI', 'FMS Delhi', 'SP Jain',
+            'Great Lakes Chennai', 'NMIMS Mumbai', 'MDI Gurgaon', 'SIBM Pune', 'IMT Ghaziabad', 'TAPMI Manipal',
             'INSEAD', 'LBS', 'Wharton', 'Harvard', 'Stanford GSB', 'Kellogg', 'Columbia', 'IESE',
           ].map((school) => (
             <span key={school} className="badge badge-lg badge-outline text-xs font-medium px-3 py-2 hover:badge-primary hover:text-primary-content transition-colors cursor-default">
               🎓 {school}
             </span>
           ))}
+        </div>
+      </section>
+
+      {/* ═══════ DOMAIN INTERVIEW CARDS ═══════ */}
+      <section className="bg-base-200/30 py-12">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-base-content mb-3">Domain-Specific Prep</h2>
+            <p className="text-base-content/50">{DOMAIN_QUESTIONS.length}+ real recruiter questions across 6 placement domains</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {DOMAIN_CONFIGS.map((cfg) => {
+              const count = getDomainQuestionCount(cfg.key);
+              return (
+                <div key={cfg.key} className="card bg-base-100 border border-base-300 hover:border-primary/30 hover:shadow-md transition-all">
+                  <div className="card-body p-5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">{cfg.icon}</span>
+                      <div>
+                        <h4 className="font-bold text-base-content">{cfg.label}</h4>
+                        <p className="text-xs text-base-content/50">{count} questions · {cfg.subcategories.length} subcategories</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {cfg.subcategories.slice(0, 3).map((sub) => (
+                        <span key={sub} className="badge badge-xs badge-ghost">{sub}</span>
+                      ))}
+                      {cfg.subcategories.length > 3 && (
+                        <span className="badge badge-xs badge-ghost">+{cfg.subcategories.length - 3} more</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {onStartDomainInterview && (
+            <div className="text-center mt-6">
+              <button className="btn btn-primary gap-2" onClick={onStartDomainInterview}>
+                <Briefcase size={18} /> Explore Domain Prep <ArrowRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -327,10 +378,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartInterview, onGo
 
         <div className="space-y-3">
           <FAQItem q="Is neevv Prep free?" a="Yes! The core mock interview experience with all 5 questions and the scorecard is completely free. No sign-up, no credit card." />
-          <FAQItem q="What B-schools does this prepare me for?" a="neevv Prep covers Indian B-schools (IIM A/B/C, ISB, XLRI, FMS, SP Jain) and international programs (INSEAD, LBS, Wharton, Harvard, Stanford, Kellogg, Columbia, IESE). The AI adapts its coaching style and question difficulty based on your target school." />
+          <FAQItem q="What B-schools does this prepare me for?" a="neevv Prep covers Indian B-schools (IIM A/B/C, ISB, XLRI, FMS, SP Jain, Great Lakes Chennai, NMIMS Mumbai, MDI Gurgaon, SIBM Pune, IMT Ghaziabad, TAPMI Manipal) and international programs (INSEAD, LBS, Wharton, Harvard, Stanford, Kellogg, Columbia, IESE). The AI adapts its coaching style and question difficulty based on your target school." />
           <FAQItem q="How does the neev Coach work?" a="neevv Prep uses a custom coaching workflow built on 25+ years of MBA admissions expertise. It enforces STAR method for behavioral questions, requires step-by-step math for guesstimates, and provides an enhanced version of every answer you give." />
           <FAQItem q="Can I upload my resume?" a="Absolutely! Upload a .txt file or paste your resume content. Your neev Coach will then reference your specific roles, projects, and achievements — making every question deeply personal to your experience." />
           <FAQItem q="What is the neevv Scorecard?" a="After 5 questions, you receive a scorecard with scores for Foundation (industry knowledge, self-awareness), Logic (analytical rigor, MECE thinking), and Communication (clarity, structure, vocabulary). It also includes speech analytics, filler word counts, and B-school terms used." />
+          <FAQItem q="What domain interviews are available?" a="We offer 350+ real recruiter questions across 6 domains: Finance, Analytics, Sales & Marketing, Consulting, Operations & SCM, and ERP/Business Analysis. You can browse the question bank or take a full domain mock interview with your neev Coach." />
           <FAQItem q="Can I get feedback from a human mentor?" a="Yes! During the interview, you can flag any answer for mentor review. A coach with 25+ years of MBA admissions experience can review your answer and send personal tips." />
           <FAQItem q="Is my data private?" a="Your interview data stays in your session. Video recordings are processed locally and never uploaded. Resume content is only used for the current session's AI personalization." />
         </div>

@@ -3,10 +3,10 @@ import {
   GraduationCap, Menu, X,
   LayoutDashboard, Target, CalendarCheck, BookOpen,
   MessageSquareText, Wrench, Settings, CreditCard,
-  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket, Sun, Moon
+  HelpCircle, LogOut, Code2, Terminal, BarChart3, Rocket, Sun, Moon, Briefcase
 } from 'lucide-react';
 
-export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle';
+export type Page = 'landing' | 'interview' | 'tools' | 'questionbank' | 'dailypractice' | 'caselibrary' | 'storybank' | 'preferences' | 'upgrade' | 'help' | 'techinterview' | 'techquestionbank' | 'progress' | 'lifecycle' | 'domain-qbank' | 'domain-interview';
 
 interface NavbarProps {
   currentPage: Page;
@@ -51,6 +51,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, userNam
     { icon: <Wrench size={20} />, label: 'Free Tools', page: 'tools', dividerAfter: true },
     { icon: <Code2 size={20} />, label: '🆕 Tech Interview', page: 'techinterview' },
     { icon: <Terminal size={20} />, label: 'Tech Question Bank', page: 'techquestionbank', dividerAfter: true },
+    { icon: <Briefcase size={20} />, label: '💼 Domain Interview', page: 'domain-interview' },
+    { icon: <BookOpen size={20} />, label: 'Domain Q-Bank', page: 'domain-qbank', dividerAfter: true },
     { icon: <Settings size={20} />, label: 'Preferences', page: 'preferences' },
     { icon: <CreditCard size={20} />, label: 'Upgrade Plan', page: 'upgrade' },
     { icon: <HelpCircle size={20} />, label: 'Get Help', page: 'help' },

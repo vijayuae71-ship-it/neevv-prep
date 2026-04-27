@@ -156,7 +156,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onStart, onBack }) => 
               <input
                 type="text"
                 className="grow"
-                placeholder="Target B-school (e.g., ISB, IIM-A/B/C/L/I/K, XLRI, FMS, SIBM, IMT, TAPMI, Wharton)"
+                placeholder="Target B-school (e.g., ISB, IIM-A/B/C/L/I/K, XLRI, FMS, Great Lakes, SIBM, IMT, TAPMI, Wharton)"
                 value={targetSchool}
                 onChange={(e) => setTargetSchool(e.target.value)}
               />
